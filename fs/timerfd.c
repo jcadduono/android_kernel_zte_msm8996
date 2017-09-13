@@ -191,6 +191,8 @@ static int timerfd_setup(struct timerfd_ctx *ctx, int flags,
 				alarm_start(&ctx->t.alarm, texp);
 			else
 				alarm_start_relative(&ctx->t.alarm, texp);
+			alarm_log_zte(&ctx->t.alarm, ktmr->it_value.tv_sec
+				, ktmr->it_interval.tv_sec, (flags & TFD_TIMER_ABSTIME));
 		} else {
 			hrtimer_start(&ctx->t.tmr, texp, htmode);
 		}

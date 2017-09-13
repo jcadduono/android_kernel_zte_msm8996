@@ -1,0 +1,368 @@
+#include "dsi-panel-zte-truly-r63452-5p5-fhd-dualmipi-video.dtsi"
+#include "dsi-panel-zte-truly-r63452-5p5-fhd-dualmipi-video2.dtsi"//for dual dsi
+#include "dsi-panel-zte-truly-nt35595-5p5-fhd-dualmipi-cmd.dtsi"
+#include "dsi-panel-zte-truly-nt35595-5p5-fhd-dualmipi-cmd2.dtsi"
+#include "touch-key-backlight-fujisan.dtsi"
+
+&mdss_hdmi_tx {
+	status = "disabled";
+};
+
+&mdss_dsi {
+	//hw-config = "split_dsi";
+	hw-config = "dual_dsi";
+	//hw-config = "single_dsi";
+};
+
+&pmi8994_wled {
+	status = "ok";
+	qcom,en-cabc;
+	qcom,led-strings-list = [00 01];
+};
+
+&tlmm {
+	mdss_te1_active: mdss_te1_active {
+		mux {
+			pins = "gpio11";
+			function = "mdp_vsync";
+		};
+		config {
+			pins = "gpio11";
+			drive-strength = <2>; /* 8 mA */
+			bias-pull-down; /* pull down*/
+		};
+	};
+
+	mdss_te1_suspend: mdss_te1_suspend {
+		mux {
+			pins = "gpio11";
+			function = "mdp_vsync";
+		};
+		config {
+			pins = "gpio11";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-down; /* pull down */
+		};
+	};
+
+	tps65132-en-pin {
+		tps65132_en_default: tps65132_en_default {
+			mux {
+				pins = "gpio31", "gpio32";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio31", "gpio32";
+				drive-strength = <2>; /* 2 mA */
+				bias-pull-down; /* pull down */
+			};
+		};
+	};
+	/*add MagnaChip hall sensors start*/
+	mxm1120_int_pin {
+		mxm1120_int1_default: int_default {
+			mux {
+				pins = "gpio124";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio124";
+				num-grp-pins = <1>;
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+	};
+	/*add MagnaChip hall sensors end*/
+};
+
+&pmx_mdss {
+	mdss_dsi1_active: mdss_dsi1_active {
+		mux {
+			pins = "gpio69";
+			function = "gpio";
+		};
+
+		pmx_mdss {
+			pins = "gpio69";
+			drive-strength = <8>; /* 8 mA */
+			bias-disable = <0>; /* no pull */
+		};
+	};
+	mdss_dsi1_suspend: mdss_dsi1_suspend {
+		mux {
+			pins = "gpio69";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio69";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-down; /* pull down */
+		};
+	};
+};
+
+&pm8994_l17 {
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+};
+
+&i2c_3 { /* BLSP1 QUP3 */
+	tps65132@3e {
+		compatible = "ti,tps65132";
+		//status = "disabled";
+		status = "ok";
+		reg = <0x3e>;
+		i2c-pwr-supply = <&pm8994_s4>;
+		ti,en-gpio-lpm;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps65132_en_default>;
+
+		regulators {
+			tps65132_pos: pos-boost {
+				regulator-name = "tps65132-pos";
+				regulator-min-microvolt = <5500000>;
+				regulator-max-microvolt = <5500000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <200000>;
+				ti,en-gpio = <&tlmm 31 0>;
+				//regulator-always-on;
+				//regulator-boot-on;
+			};
+
+			tps65132_neg: neg-boost {
+				regulator-name = "tps65132-neg";
+				regulator-min-microvolt = <5500000>;
+				regulator-max-microvolt = <5500000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <40000>;
+				ti,en-gpio = <&tlmm 32 0>;
+				//regulator-always-on;
+				//regulator-boot-on;
+			};
+		};
+	};
+};
+
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_zte_truly_r63452_5p5_fhd_video>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+
+	qcom,display-id = "primary"; //for dual dsi
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,platform-te2-gpio = <&tlmm 11 0>;
+	qcom,platform-reset-gpio = <&tlmm 8 0>;
+	qcom,platform-reset2-gpio = <&tlmm 69 0>;
+	zte,lcd-5v-vsp-enable-gpio = <&tlmm 31 0>;
+	lcd2_5v_vsp-supply = <&tps65132_pos>;
+	zte,lcd-5v-vsn-enable-gpio = <&tlmm 32 0>;
+	lcd2_5v_vsn-supply = <&tps65132_neg>;
+	//zte,lcd-3v-vsp-enable-gpio = <&tlmm 40 0>;
+	lcd_2p8-supply = <&pm8994_l22>;
+	lcd2_2p8-supply = <&pm8994_l17>;
+	//qcom,platform-bklight-en-gpio = <&pm8994_gpios 14 0>;
+};
+
+&mdss_dsi1 {
+	//status = "disabled"; //for single dsi
+	qcom,dsi-pref-prim-pan = <&dsi_dual_zte_truly_r63452_5p5_fhd_video1>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi1_active &mdss_te1_active>;
+	pinctrl-1 = <&mdss_dsi1_suspend &mdss_te1_suspend>;
+
+	qcom,display-id = "tertiary"; //for dual dsi
+
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,platform-te2-gpio = <&tlmm 11 0>;
+	qcom,platform-reset-gpio = <&tlmm 8 0>;
+	qcom,platform-reset2-gpio = <&tlmm 69 0>;
+	zte,lcd-5v-vsp-enable-gpio = <&tlmm 31 0>;
+	lcd2_5v_vsp-supply = <&tps65132_pos>;
+	zte,lcd-5v-vsn-enable-gpio = <&tlmm 32 0>;
+	lcd2_5v_vsn-supply = <&tps65132_neg>;
+	//zte,lcd-3v-vsp-enable-gpio = <&tlmm 40 0>;
+	lcd_2p8-supply = <&pm8994_l22>;
+	lcd2_2p8-supply = <&pm8994_l17>;
+	//qcom,platform-bklight-en-gpio = <&pm8994_gpios 14 0>;
+};
+
+&dsi_dual_zte_truly_r63452_5p5_fhd_video {
+	//qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&dsi_dual_zte_truly_nt35695_5p5_fhd_cmd {
+	//qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&dsi_dual_zte_truly_nt35695_5p5_fhd_cmd2 {
+	//qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&dsi_dual_zte_truly_r63452_5p5_fhd_video1 {
+	//qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&spi_9 {
+	reg-names = "spi_physical", "spi_bam_physical";
+	reg = <0x075B7000 0x1000>,
+	      <0x07584000 0x2b000>;
+	spi_ak4961@0 {
+		status = "disabled";
+	};
+	spi_ak4962@0 {
+		compatible = "qcom,ak4962-spi";
+		reg = <0>;
+		spi-max-frequency = <9600000>;
+	};
+};
+
+&slim_msm {
+	ak4962_codec {
+		compatible = "qcom,ak4962-slim-pgd";
+		elemental-addr = [00 02 62 49 DD 01];
+
+		interrupt-parent = <&ak49xx_intc>;
+		interrupts = <0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+			      17 18 19 20 21 22 23 24 25 26 27 28 29
+			      30 31>;
+
+		akm,cdc-reset-gpio = <&tlmm 64 0>;
+		akm,cdc-ldo-gpio = <&tlmm 63 0>;
+		akm,cdc-cif1-gpio=<&tlmm 62 0>;
+
+		clock-names = "cdc_clk";
+		clocks = <&clock_audio clk_audio_pmi_clk>;
+
+		// cdc-vdd-buck-supply = <&pm8994_s4>;
+		// qcom,cdc-vdd-buck-voltage = <1800000 1800000>;
+		// qcom,cdc-vdd-buck-current = <650000>;
+
+		cdc-vdd-tx-h-supply = <&pm8994_s4>;
+		akm,cdc-vdd-tx-h-voltage = <1800000 1800000>;
+		akm,cdc-vdd-tx-h-current = <25000>;
+
+		cdc-vdd-rx-h-supply = <&pm8994_s4>;
+		akm,cdc-vdd-rx-h-voltage = <1800000 1800000>;
+		akm,cdc-vdd-rx-h-current = <25000>;
+
+		cdc-vdd-px-supply = <&pm8994_s4>;
+		akm,cdc-vdd-px-voltage = <1800000 1800000>;
+		akm,cdc-vdd-px-current = <45000>;
+
+		akm,cdc-static-supplies = "cdc-vdd-tx-h",
+					   "cdc-vdd-rx-h",
+					   "cdc-vdd-px";
+
+		akm,cdc-micbias-mpwr1-mv = <0>;
+		akm,cdc-micbias-mpwr2-mv = <2800>;
+
+		akm,cdc-mclk-clk-rate = <9600000>;
+		akm,cdc-slim-ifd = "ak4962-slim-ifd";
+		akm,cdc-slim-ifd-elemental-addr = [00 00 62 49 DD 01];
+	};
+
+	ak4961_codec {
+		status = "disabled";
+	};
+};
+
+&soc {
+	sound-ak4961 {
+		status = "disabled";
+	};
+
+	sound-ak4962 {
+		compatible = "qcom,msm8996-asoc-snd-ak4962";
+		#if 1
+		qcom,model = "msm8996-ak4962-snd-card";
+		#else
+		qcom,model = "msm8996-test-snd-card";
+		#endif
+
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK";
+
+		qcom,rcv-sw-gpio = <&pm8994_gpios 13 0>;
+
+		qcom,ak4962-mclk-clk-freq = <9600000>;
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1", "msm-pcm-dsp.2",
+				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
+				"msm-lsm-client", "msm-pcm-routing", "msm-cpe-lsm",
+				"msm-compr-dsp";
+		asoc-cpu = <&dai_pri_auxpcm>, <&dai_sec_auxpcm>, <&dai_hdmi>, <&dai_mi2s>,<&dai_mi2s_quat>,
+				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+				<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>, <&afe_pcm_rx>,
+				<&afe_pcm_tx>, <&afe_proxy_rx>, <&afe_proxy_tx>,
+				<&incall_record_rx>, <&incall_record_tx>,
+				<&incall_music_rx>, <&incall_music2_rx>,
+				<&sb_5_rx>;
+		asoc-cpu-names = "msm-dai-q6-auxpcm.1", "msm-dai-q6-auxpcm.2",
+				"msm-dai-q6-hdmi.8", "msm-dai-q6-mi2s.2","msm-dai-q6-mi2s.3",
+				"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+				"msm-dai-q6-dev.16388", "msm-dai-q6-dev.16389",
+				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+				"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+				"msm-dai-q6-dev.16395", "msm-dai-q6-dev.224",
+				"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
+				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
+				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+				"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394";
+		asoc-codec = <&stub_codec>;
+		asoc-codec-names = "msm-stub-codec.1";
+	};
+};
+
+/*Simulate Hall Sensor*/
+&zte_hall_gpio_active {
+	mux {
+		pins = "gpio1";
+	};
+
+	config {
+		pins = "gpio1";
+	};
+};
+/*Digital Hall Sensor*/
+&i2c_3 {
+	magnachip@0C {
+		compatible = "magnachip,mxm1120";
+		reg = <0x0C>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&mxm1120_int1_default>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <124 0x2002>;
+		vdd-supply = <&pm8994_l18>;
+		vio-supply = <&pm8994_s4>;
+		magnachip,init-interval = <200>;
+		magnachip,gpio-int = <&tlmm 124 0x2002>;
+		magnachip,use-hrtimer;
+		magnachip,use-interrupt;
+	};
+};
+/*End of MagnaChip Digital Hall Sensor*/
+
+&i2c_6 {
+	tfa9888@34 {
+		compatible = "nxp,tfa9888";
+		reg = <0x34>;
+		reset-gpio = <&pm8994_gpios 2 0>;
+	};
+};

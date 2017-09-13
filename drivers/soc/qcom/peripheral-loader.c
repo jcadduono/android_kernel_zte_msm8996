@@ -36,11 +36,15 @@
 #include <soc/qcom/subsystem_restart.h>
 #include <soc/qcom/secure_buffer.h>
 
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <asm/setup.h>
 #include <asm-generic/io-64-nonatomic-lo-hi.h>
 
 #include "peripheral-loader.h"
+
+#include <soc/qcom/vendor/sdlog_mem_reserve.h>
+#include <soc/qcom/vendor/vlog.h>
+
 
 #define pil_err(desc, fmt, ...)						\
 	dev_err(desc->dev, "%s: " fmt, desc->name, ##__VA_ARGS__)
@@ -55,6 +59,7 @@
 
 #define PIL_NUM_DESC		10
 static void __iomem *pil_info_base;
+
 
 /**
  * proxy_timeout - Override for proxy vote timeouts
@@ -223,11 +228,72 @@ int pil_assign_mem_to_subsys_and_linux(struct pil_desc *desc,
 	ret = hyp_assign_phys(addr, size, srcVM, 1, destVM, destVMperm, 2);
 	if (ret)
 		pil_err(desc, "%s: failed for %pa address of size %zx - subsys VMid %d\n",
-				__func__, &addr, size, desc->subsys_vmid);
+			__func__, &addr, size, desc->subsys_vmid);
+
+	if ((desc->subsys_vmid == VMID_MSS_MSA) && sdlog_memory_reserved()) {
+		unsigned int sdlog_mem_addr;
+		int sdlog_mem_size;
+
+		sdlog_mem_addr = sdlog_memory_get_addr();
+		sdlog_mem_size = sdlog_memory_get_size();
+		ret = hyp_assign_phys(sdlog_mem_addr,
+			sdlog_mem_size, srcVM, 1,
+			destVM, destVMperm, 2);
+		pil_err(desc, "%s: assign sdlog memory addr 0x%x, size 0x%x\n",
+			__func__, sdlog_mem_addr, sdlog_mem_size);
+	}
+
+
+#ifdef CONFIG_VENDOR_VLOG
+	if ((desc->subsys_vmid == VMID_MSS_MSA) &&
+			vendor_log_get_memory_addr() &&
+			vendor_log_get_memory_size()) {
+		unsigned int vlog_mem_addr;
+		int vlog_mem_size;
+
+		vlog_mem_addr = vendor_log_get_memory_addr();
+		vlog_mem_size = vendor_log_get_memory_size();
+
+		ret = hyp_assign_phys(vlog_mem_addr,
+			vlog_mem_size, srcVM, 1,
+			destVM, destVMperm, 2);
+		pil_info(desc, "%s: assign vlog memory addr 0x%x, size 0x%x\n",
+			__func__, vlog_mem_addr,
+			vlog_mem_size);
+	}
+#endif
 
 	return ret;
 }
 EXPORT_SYMBOL(pil_assign_mem_to_subsys_and_linux);
+
+int pil_assign_mem_back_to_linux(struct pil_desc *desc)
+{
+	int ret = 0;
+	int srcVM[2] = {VMID_HLOS, VMID_MSS_MSA};
+	int destVM[1] = {VMID_HLOS};
+	int destVMperm[1] = {PERM_READ | PERM_WRITE};
+
+	if (sdlog_memory_reserved()) {
+		ret = hyp_assign_phys(sdlog_memory_get_addr(),
+			sdlog_memory_get_size(),
+			srcVM, 2, destVM, destVMperm, 1);
+		pil_info(desc, "assign sdlog memoy back to linux\n");
+	}
+
+#ifdef CONFIG_VENDOR_VLOG
+	if (vendor_log_get_memory_addr() &&
+			vendor_log_get_memory_size()) {
+		ret = hyp_assign_phys(vendor_log_get_memory_addr(),
+				vendor_log_get_memory_size(), srcVM, 2,
+				destVM, destVMperm, 1);
+		pil_info(desc, "assign sdlog memoy back to linux\n");
+	}
+#endif
+
+	return ret;
+}
+
 
 int pil_reclaim_mem(struct pil_desc *desc, phys_addr_t addr, size_t size,
 						int VMid)
@@ -276,6 +342,7 @@ static void pil_proxy_unvote_work(struct work_struct *work)
 {
 	struct delayed_work *delayed = to_delayed_work(work);
 	struct pil_priv *priv = container_of(delayed, struct pil_priv, proxy);
+
 	__pil_proxy_unvote(priv);
 }
 

@@ -10,3 +10,4 @@ endif
 obj-$(CONFIG_ION_DUMMY) += ion_dummy_driver.o
 obj-$(CONFIG_ION_TEGRA) += tegra/
 obj-$(CONFIG_ION_MSM) += msm/
+obj-$(CONFIG_ION_ZTE_FRAGMENT_OPT) += ion_zte_fragment_opt.o

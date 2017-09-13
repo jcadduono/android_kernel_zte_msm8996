@@ -1,0 +1,1 @@
+obj-$(CONFIG_SENSORS_MXM1120) += mxm1120.o

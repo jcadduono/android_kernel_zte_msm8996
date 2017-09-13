@@ -46,6 +46,10 @@
 #include "ion_priv.h"
 #include "compat_ion.h"
 
+#ifdef CONFIG_ION_ZTE_FRAGMENT_OPT
+#include "ion_zte_fragment_opt_priv.h"
+#endif
+
 /**
  * struct ion_device - the metadata of the ion device node
  * @dev:		the actual misc device
@@ -1775,6 +1779,9 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 	seq_puts(s, "----------------------------------------------------\n");
 	seq_puts(s, "orphaned allocations (info is from last known client):\n");
 	mutex_lock(&dev->buffer_lock);
+#ifdef CONFIG_ION_ZTE_FRAGMENT_OPT
+	zte_ion_buffer_order_count_init();
+#endif
 	for (n = rb_first(&dev->buffers); n; n = rb_next(n)) {
 		struct ion_buffer *buffer = rb_entry(n, struct ion_buffer,
 						     node);
@@ -1788,7 +1795,19 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 				   atomic_read(&buffer->ref.refcount));
 			total_orphaned_size += buffer->size;
 		}
+#ifdef CONFIG_ION_ZTE_FRAGMENT_OPT
+		/* zte added, now only deal with the ion system heap */
+		if (ION_SYSTEM_HEAP_ID == buffer->heap->id) {
+			zte_ion_buffer_add_one_stat(buffer);
+		}
+#endif
 	}
+#ifdef CONFIG_ION_ZTE_FRAGMENT_OPT
+	/* zte added, now only deal with the ion system heap */
+	if (ION_SYSTEM_HEAP_ID == heap->id) {
+		zte_ion_buffer_stats_print(s);
+	}
+#endif
 	mutex_unlock(&dev->buffer_lock);
 	seq_puts(s, "----------------------------------------------------\n");
 	seq_printf(s, "%16.s %16zu\n", "total orphaned",

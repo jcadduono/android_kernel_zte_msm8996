@@ -52,11 +52,63 @@ module_param_named(debug_mask, msm_ipc_router_debug_mask,
 #define MODULE_NAME "ipc_router"
 
 #define IPC_RTR_INFO_PAGES 6
+extern int zte_smd_qmi_wakeup;
+/*
+the following table should be find <qmi_common_1.5%2C_qmi_common_constant_definitions_spec.pdf>
+80-VB816-2K
+*/
+#define QMI_SERVICE_MAX_ID 0x2A
+static const char * const qmi_service[] = {
+	"CTL",	/*0x00*/
+	"WDS",	/*0x01*/
+	"DMS",	/*0x02*/
+	"NAS",	/*0x03*/
+	"QOS",	/*0x04*/
+	"WMS",	/*0x05*/
+	"PDS",	/*0x06*/
+	"AUTH",	/*0x07*/
+	"AT",	/*0x08*/
+	"VOICE",	/*0x09*/
+	"CAT",	/*0x0A*/
+	"UIM",	/*0x0B*/
+	"PBM",	/*0x0C*/
+	"QCHAT",	/*0x0D*/
+	"RMTFS",	/*0x0E*/
+	"TEST",	/*0x0F*/
+	"LOC-GPS",	/*0x10*/
+	"SAR",	/*0x11*/
+	"IMS",	/*0x12*/
+	"ADC",	/*0x13*/
+	"CSD",	/*0x14*/
+	"MFS",	/*0x15*/
+	"TIME",	/*0x16*/
+	"TS",	/*0x17*/
+	"TMD",	/*0x18*/
+	"SAP",	/*0x19*/
+	"WDA",	/*0x1A*/
+	"TSYNC",	/*0x1B*/
+	"RFSA",	/*0x1C*/
+	"CSVT",	/*0x1D*/
+	"QCMAP",	/*0x1E*/
+	"IMSP",	/*0x1F*/
+	"IMSVT",	/*0x20*/
+	"IMSA",	/*0x21*/
+	"COEX",	/*0x22*/
+	"Reserved",	/*0x23*/
+	"PDC",	/*0x24*/
+	"Reserved",	/*0x25*/
+	"STX",	/*0x26*/
+	"BIT",	/*0x27*/
+	"IMSRTP",	/*0x28*/
+	"RFRPE",	/*0x29*/
+	"LookTable"	/*0x2A*/
+	};
+
 
 #define IPC_RTR_INFO(log_ctx, x...) do { \
 if (log_ctx) \
 	ipc_log_string(log_ctx, x); \
-if (msm_ipc_router_debug_mask & RTR_DBG) \
+if ((msm_ipc_router_debug_mask & RTR_DBG) || zte_smd_qmi_wakeup) \
 	pr_info("[IPCRTR] "x); \
 } while (0)
 
@@ -362,7 +414,7 @@ static void ipc_router_log_msg(void *log_ctx, uint32_t xchng_type,
 			port_type = SERVER_PORT;
 		}
 		IPC_RTR_INFO(log_ctx,
-			"%s %s %s Len:0x%x T:0x%x CF:0x%x SVC:<0x%x:0x%x> SRC:<0x%x:0x%x> DST:<0x%x:0x%x> DATA: %08x %08x",
+			"%s %s %s Len:0x%x T:0x%x CF:0x%x SVC:<0x%x(%s):0x%x> SRC:<0x%x:0x%x> DST:<0x%x:0x%x> DATA: %08x %08x",
 			(xchng_type == IPC_ROUTER_LOG_EVENT_RX ? "" :
 			(xchng_type == IPC_ROUTER_LOG_EVENT_TX ?
 			 current->comm : "")),
@@ -373,7 +425,8 @@ static void ipc_router_log_msg(void *log_ctx, uint32_t xchng_type,
 			(xchng_type == IPC_ROUTER_LOG_EVENT_RX_ERR ? "RX_ERR" :
 			 "UNKNOWN")))),
 			hdr->size, hdr->type, hdr->control_flag,
-			svcId, svcIns, hdr->src_node_id, hdr->src_port_id,
+			svcId, (svcId < QMI_SERVICE_MAX_ID) ? qmi_service[svcId] : qmi_service[QMI_SERVICE_MAX_ID],
+			svcIns, hdr->src_node_id, hdr->src_port_id,
 			hdr->dst_node_id, hdr->dst_port_id,
 			(unsigned int)pl_buf, (unsigned int)(pl_buf>>32));
 
@@ -1164,7 +1217,9 @@ static int post_pkt_to_port(struct msm_ipc_port *port_ptr,
 	}
 
 	mutex_lock(&port_ptr->port_rx_q_lock_lhc3);
-	__pm_stay_awake(port_ptr->port_rx_ws);
+	/* ZTE change ipc lock as 2 min timeout wakelock. */
+	__pm_wakeup_event(port_ptr->port_rx_ws, 2 * 60 * MSEC_PER_SEC);
+	/* __pm_stay_awake(port_ptr->port_rx_ws); */
 	list_add_tail(&temp_pkt->list, &port_ptr->port_rx_q);
 	wake_up(&port_ptr->port_rx_wait_q);
 	notify = port_ptr->notify;
@@ -1322,6 +1377,7 @@ struct msm_ipc_port *msm_ipc_router_create_raw_port(void *endpoint,
 		 "ipc%08x_%s",
 		 port_ptr->this_port.port_id,
 		 current->comm);
+	pr_info("[PM-IPC] register ipc%08x_%s\n", port_ptr->this_port.port_id, current->comm);
 	port_ptr->port_rx_ws = wakeup_source_register(port_ptr->rx_ws_name);
 	if (!port_ptr->port_rx_ws) {
 		kfree(port_ptr);

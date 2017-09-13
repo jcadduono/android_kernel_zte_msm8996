@@ -32,6 +32,7 @@
 #include <soc/qcom/ramdump.h>
 #include <soc/qcom/smem.h>
 #include <soc/qcom/smsm.h>
+#include <soc/qcom/vendor/modem_fatal_error.h>
 
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
@@ -63,6 +64,8 @@ static void log_modem_sfr(void)
 	strlcpy(reason, smem_reason, min(size, MAX_SSR_REASON_LEN));
 	pr_err("modem subsystem failure reason: %s.\n", reason);
 
+	modem_fatal_error_update_reason(smem_reason);
+
 	smem_reason[0] = '\0';
 	wmb();
 }
@@ -91,6 +94,7 @@ static irqreturn_t modem_err_fatal_intr_handler(int irq, void *dev_id)
 static irqreturn_t modem_stop_ack_intr_handler(int irq, void *dev_id)
 {
 	struct modem_data *drv = subsys_to_drv(dev_id);
+
 	pr_info("Received stop ack interrupt from modem\n");
 	complete(&drv->stop_ack);
 	return IRQ_HANDLED;
@@ -123,6 +127,9 @@ static int modem_shutdown(const struct subsys_desc *subsys, bool force_stop)
 
 	pil_shutdown(&drv->q6->desc);
 
+	/* re-assign sdlog mem back to linux to avoid crash when modem subsystem restart */
+	pil_assign_mem_back_to_linux(&drv->q6->desc);
+
 	return 0;
 }
 
@@ -147,6 +154,7 @@ static int modem_powerup(const struct subsys_desc *subsys)
 static void modem_crash_shutdown(const struct subsys_desc *subsys)
 {
 	struct modem_data *drv = subsys_to_drv(subsys);
+
 	drv->crash_shutdown = true;
 	if (!subsys_get_crash_status(drv->subsys) &&
 		subsys->force_stop_gpio) {
@@ -186,6 +194,7 @@ static int modem_ramdump(int enable, const struct subsys_desc *subsys)
 static irqreturn_t modem_wdog_bite_intr_handler(int irq, void *dev_id)
 {
 	struct modem_data *drv = subsys_to_drv(dev_id);
+
 	if (drv->ignore_errors)
 		return IRQ_HANDLED;
 

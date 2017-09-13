@@ -12,7 +12,9 @@ menuconfig INPUT_TOUCHSCREEN
 if INPUT_TOUCHSCREEN
 
 source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
-source "drivers/input/touchscreen/synaptics_dsx_2.6/Kconfig"
+#source "drivers/input/touchscreen/synaptics_dsx_2.6/Kconfig"
+source "drivers/input/touchscreen/novatek_touch/Kconfig"
+source "drivers/input/touchscreen/novatek_touch_2nd/Kconfig"
 
 config OF_TOUCHSCREEN
 	def_tristate INPUT
@@ -1128,4 +1130,10 @@ config TOUCHSCREEN_MAXIM_STI
 
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 
+source "drivers/input/touchscreen/synaptics_dsx_zte/Kconfig"
+config FORCE_TOUCH_NDT
+       tristate "Force Touch by NDT"
+       depends on I2C && INPUT
+       help
+         This driver provides support for Force Touch by NDT.
 endif

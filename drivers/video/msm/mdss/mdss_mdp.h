@@ -22,6 +22,7 @@
 #include <linux/notifier.h>
 #include <linux/irqreturn.h>
 #include <linux/kref.h>
+#include <linux/kthread.h>
 
 #include "mdss.h"
 #include "mdss_mdp_hwio.h"
@@ -56,7 +57,8 @@
 #define C0_G_Y		0	/* G/luma */
 
 /* wait for at most 2 vsync for lowest refresh rate (24hz) */
-#define KOFF_TIMEOUT msecs_to_jiffies(84)
+#define KOFF_TIMEOUT_MS 84
+#define KOFF_TIMEOUT msecs_to_jiffies(KOFF_TIMEOUT_MS)
 
 #define OVERFETCH_DISABLE_TOP		BIT(0)
 #define OVERFETCH_DISABLE_BOTTOM	BIT(1)
@@ -460,6 +462,7 @@ struct mdss_mdp_ctl {
 
 	/* dynamic resolution switch during cont-splash handoff */
 	bool switch_with_handoff;
+	bool commit_in_progress;
 };
 
 struct mdss_mdp_mixer {
@@ -823,7 +826,6 @@ struct mdss_overlay_private {
 
 	struct sw_sync_timeline *vsync_timeline;
 	struct mdss_mdp_vsync_handler vsync_retire_handler;
-	struct work_struct retire_work;
 	int retire_cnt;
 	bool kickoff_released;
 	u32 cursor_ndx[2];
@@ -831,10 +833,12 @@ struct mdss_overlay_private {
 	u32 bl_events;
 	u32 ad_events;
 	u32 ad_bl_events;
-
 	bool allow_kickoff;
-
 	u8 sd_transition_state;
+
+	struct kthread_worker worker;
+	struct kthread_work vsync_work;
+	struct task_struct *thread;
 };
 
 struct mdss_mdp_set_ot_params {

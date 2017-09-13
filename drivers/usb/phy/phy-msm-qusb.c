@@ -1036,6 +1036,7 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 			 * to put QUSB PHY into high-z state.
 			 */
 			qphy->put_into_high_z_state = true;
+			qphy->rm_pulldown = false;
 		}
 		qphy->suspended = true;
 	} else {

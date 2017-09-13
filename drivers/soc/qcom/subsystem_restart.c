@@ -42,6 +42,8 @@
 
 #include "peripheral-loader.h"
 
+#define SUBSYSTEM_RAMDUMP_FLUSH_TIME        5000
+
 #define DISABLE_SSR 0x9889deed
 /* If set to 0x9889deed, call to subsystem_restart_dev() returns immediately */
 static uint disable_restart_work;
@@ -1003,7 +1005,6 @@ static void device_restart_work_hdlr(struct work_struct *work)
 {
 	struct subsys_device *dev = container_of(work, struct subsys_device,
 							device_restart_work);
-
 	notify_each_subsys_device(&dev, 1, SUBSYS_SOC_RESET, NULL);
 	/*
 	 * Temporary workaround until ramdump userspace application calls

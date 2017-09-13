@@ -833,5 +833,6 @@ config QCOM_SMCINVOKE
 	  communication between QSEE and HLOS.
 
 source "drivers/soc/qcom/memshare/Kconfig"
+source "drivers/soc/qcom/vendor/Kconfig"
 
 endif # ARCH_MSM

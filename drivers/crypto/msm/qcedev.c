@@ -1618,7 +1618,7 @@ long qcedev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		if (copy_to_user((void __user *)arg,
 					&qcedev_areq.cipher_op_req,
 					sizeof(struct qcedev_cipher_op_req)))
-				return -EFAULT;
+			return -EFAULT;
 		break;
 
 	case QCEDEV_IOCTL_SHA_INIT_REQ:
@@ -1637,7 +1637,7 @@ long qcedev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			return err;
 		if (copy_to_user((void __user *)arg, &qcedev_areq.sha_op_req,
 					sizeof(struct qcedev_sha_op_req)))
-				return -EFAULT;
+			return -EFAULT;
 		}
 		handle->sha_ctxt.init_done = true;
 		break;

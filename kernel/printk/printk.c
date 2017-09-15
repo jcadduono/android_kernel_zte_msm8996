@@ -234,11 +234,12 @@ struct printk_log {
 #if defined(CONFIG_LOG_BUF_MAGIC)
 	u32 magic;		/* handle for ramdump analysis tools */
 #endif
-	//zte add
+	/*zte_pm add*/
 	unsigned int process_id;
 	pid_t pid;
 	char comm[TASK_COMM_LEN];
-	struct timespec ts; //zte_pm_20151221
+	struct timespec ts;
+	/*zte_pm*/
 }
 #ifdef CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS
 __packed __aligned(4)
@@ -277,11 +278,14 @@ static enum log_flags console_prev;
 static u64 clear_seq;
 static u32 clear_idx;
 
-//#define PREFIX_MAX		32
-//#define LOG_LINE_MAX		(1024 - PREFIX_MAX)
+/*zte_pm change*/
+/*#define PREFIX_MAX		32
+*#define LOG_LINE_MAX		(1024 - PREFIX_MAX)
+*/
 
 #define PREFIX_MAX		128
-#define LOG_LINE_MAX		(2048 - PREFIX_MAX)  //zte_pm
+#define LOG_LINE_MAX		(2048 - PREFIX_MAX)
+/*zte_pm change*/
 
 /* record buffer */
 #define LOG_ALIGN __alignof__(struct printk_log)
@@ -483,12 +487,12 @@ static int log_store(int facility, int level,
 		msg->ts_nsec = ts_nsec;
 	else
 		msg->ts_nsec = local_clock();
-	//zte add
+	/*zte_pm add*/
 	msg->ts = current_kernel_time();
 	msg->process_id = smp_processor_id();
 	msg->pid = current->pid;
-	sprintf(msg->comm,"%s", current->comm);
-	//zte add end
+	snprintf(msg->comm, 50, "%s", current->comm);
+	/*zte_pm add*/
 	memset(log_dict(msg) + dict_len, 0, pad_len);
 	msg->len = size;
 
@@ -1033,7 +1037,8 @@ static inline void boot_delay_msec(int level)
 static bool printk_time = IS_ENABLED(CONFIG_PRINTK_TIME);
 module_param_named(time, printk_time, bool, S_IRUGO | S_IWUSR);
 
-#if 0//zte change
+/*zte_pm change*/
+#if 0
 static size_t print_time(u64 ts, char *buf)
 #else
 static char tmpbuf[1024];
@@ -1041,18 +1046,17 @@ static size_t print_time(struct timespec ts, char *buf,
 unsigned int process_id, pid_t pid, const char* comm)
 
 {
-	//unsigned long rem_nsec;
+	/*unsigned long rem_nsec;*/
 
-	//zte add
+	/*zte_pm add*/
 	struct rtc_time tm;
 	int tlen,info_len;
-	//zte add, end
+	/*zte_pm add, end*/
 	if (!printk_time)
 		return 0;
 
-	//rem_nsec = do_div(ts, 1000000000); //zte change
-	ts.tv_sec -= 60*sys_tz.tz_minuteswest;//zte_pm_20151221 change
-	//ts -= 60*sys_tz.tz_minuteswest;//zte_pm_20151126. copy tongchangda 8952-L, sync kernel&system log-time (twist kernel timestamp)
+	/*rem_nsec = do_div(ts, 1000000000);*/
+	ts.tv_sec -= 60*sys_tz.tz_minuteswest;
 #if 0
 	if (!buf)
 		return snprintf(NULL, 0, "[%5lu.000000] ", (unsigned long)ts);
@@ -1064,11 +1068,11 @@ unsigned int process_id, pid_t pid, const char* comm)
 }
 
 	rtc_time_to_tm(ts.tv_sec, &tm);
-	tlen = sprintf(buf , "[%02d-%02d %02d:%02d:%02d.%03d] ",
+	tlen = snprintf(buf, 50, "[%02d-%02d %02d:%02d:%02d.%03d] ",
 		tm.tm_mon + 1, tm.tm_mday,tm.tm_hour, tm.tm_min,
 		tm.tm_sec, (int)(ts.tv_nsec / NSEC_PER_MSEC));
 
-	info_len = sprintf(buf + tlen, "[%u][%d: %s]",
+	info_len = snprintf(buf + tlen, 50, "[%u][%d: %s]",
 	process_id, pid, comm);
 	return tlen + info_len;
 }
@@ -1092,7 +1096,8 @@ static size_t print_prefix(const struct printk_log *msg, bool syslog, char *buf)
 		}
 	}
 
-	#if 0 //zte change
+	/*zte_pm change*/
+	#if 0
 	len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
 	#else
 	len += print_time(msg->ts, buf ? buf + len : NULL, msg->process_id, msg->pid, msg->comm);
@@ -1574,10 +1579,12 @@ static inline void printk_delay(void)
  * reached the console in case of a kernel crash.
  */
 static struct cont {
-	unsigned int process_id; //zte_pm_20151103
-	pid_t pid;               //zte_pm_20151103
-	char comm[TASK_COMM_LEN];//zte_pm_20151103
-	struct timespec ts;//zte
+	/*zte_pm add*/
+	unsigned int process_id;
+	pid_t pid;
+	char comm[TASK_COMM_LEN];
+	struct timespec ts;
+	/*zte_pm add*/
 	char buf[LOG_LINE_MAX];
 	size_t len;			/* length == 0 means unused buffer */
 	size_t cons;			/* bytes written to console */
@@ -1636,12 +1643,12 @@ static bool cont_add(int facility, int level, const char *text, size_t len)
 		cont.flags = 0;
 		cont.cons = 0;
 		cont.flushed = false;
-		//zte add
+		/*zte_pm add*/
 		cont.ts = current_kernel_time();
 		cont.process_id = smp_processor_id();
 		cont.pid = current->pid;
-		sprintf(cont.comm, "%s", current->comm);
-		//zte add
+		snprintf(cont.comm, 50, "%s", current->comm);
+		/*zte_pm add*/
 	}
 
 	memcpy(cont.buf + cont.len, text, len);
@@ -1659,7 +1666,8 @@ static size_t cont_print_text(char *text, size_t size)
 	size_t len;
 
 	if (cont.cons == 0 && (console_prev & LOG_NEWLINE)) {
-		#if 0 //zte change
+		/*zte_pm change*/
+		#if 0
 		textlen += print_time(cont.ts_nsec, text);
 		#else
 		textlen += print_time(cont.ts, text,  cont.process_id, cont.pid, cont.comm);
@@ -2715,7 +2723,8 @@ static int __init printk_late_init(void)
 		}
 	}
 	hotcpu_notifier(console_cpu_notify, 0);
-	printk("zte log address __log_buf: 0x%p\n", __log_buf); //ZTE add
+	/*zte_pm add*/
+	pr_info("zte log address __log_buf: 0x%p\n", __log_buf);
 	return 0;
 }
 late_initcall(printk_late_init);

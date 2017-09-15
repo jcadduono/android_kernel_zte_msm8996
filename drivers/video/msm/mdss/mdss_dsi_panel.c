@@ -43,17 +43,357 @@ int zte_display_init=0;
 
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
+#ifdef ZTE_SAMSUNG_ACL_HBM
+
+static int old_bl_level = 0;
+static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+				     struct dsi_panel_cmds *pcmds, u32 flags);
+static char led_acl_mode[2] = {0x55, 0x0};	/* DTYPE_DCS_WRITE1 */
+
+static struct dsi_cmd_desc acl_cmd[] = {
+	{	{DTYPE_DCS_WRITE1, 0, 0, 0, 1, sizeof(led_acl_mode)},
+		led_acl_mode
+	},
+	{	{DTYPE_DCS_WRITE1, 0, 0, 0, 1, sizeof(led_acl_mode)},
+		led_acl_mode
+	},
+	{	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_acl_mode)},
+		led_acl_mode
+	},
+};
+static char led_hbm_mode[2] = {0x53, 0x20};	/* DTYPE_DCS_WRITE1 */
+
+static struct dsi_cmd_desc hbm_cmd[] = {
+	{	{DTYPE_DCS_WRITE1, 0, 0, 0, 1, sizeof(led_hbm_mode)},
+		led_hbm_mode
+	},
+	{	{DTYPE_DCS_WRITE1, 0, 0, 0, 1, sizeof(led_hbm_mode)},
+		led_hbm_mode
+	},
+	{	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_hbm_mode)},
+		led_hbm_mode
+	},
+};
+
+
+static void mdss_dsi_panel_bklt_acl(struct mdss_dsi_ctrl_pdata *ctrl, int level)
+{
+	struct dcs_cmd_req cmdreq;
+	struct mdss_panel_info *pinfo;
+
+	if (ctrl == NULL)
+		return;
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo->dcs_cmd_by_left) {
+		if (ctrl->ndx != DSI_CTRL_LEFT)
+			return;
+	}
+	pr_info("%s: %d\n", __func__, level);
+	led_acl_mode[1] = level;
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = acl_cmd;
+	cmdreq.cmds_cnt = 3;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL | CMD_REQ_HS_MODE;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+
+}
+static void mdss_dsi_panel_bklt_hbm(struct mdss_dsi_ctrl_pdata *ctrl, int level)
+{
+	struct dcs_cmd_req cmdreq;
+	struct mdss_panel_info *pinfo;
+
+	if (ctrl == NULL)
+		return;
+
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo->dcs_cmd_by_left) {
+		if (ctrl->ndx != DSI_CTRL_LEFT)
+			return;
+	}
+	pr_info("%s: %d\n", __func__, level);
+	if (level > 0)
+		led_hbm_mode[1] = 0xe0;
+	else
+		led_hbm_mode[1] = 0x28;
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = hbm_cmd;
+	cmdreq.cmds_cnt = 3;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL | CMD_REQ_HS_MODE;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+
+}
+
+
+
+int mdss_dsi_panel_acl(struct mdss_panel_data *pdata, int level)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+
+	pr_info("%s: level == %d return\n", __func__, level);
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+			    panel_data);
+
+	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+	if (!mdss_dsi_sync_wait_enable(ctrl)) {
+		mdss_dsi_panel_bklt_acl(ctrl, level);
+		pr_info("%s: mdss_dsi_sync_wait_enable-\n", __func__);
+		return 0;
+	}
+	/*
+	 * DCS commands to update backlight are usually sent at
+	 * the same time to both the controllers. However, if
+	 * sync_wait is enabled, we need to ensure that the
+	 * dcs commands are first sent to the non-trigger
+	 * controller so that when the commands are triggered,
+	 * both controllers receive it at the same time.
+	 */
+	sctrl = mdss_dsi_get_other_ctrl(ctrl);
+	if (mdss_dsi_sync_wait_trigger(ctrl)) {
+		if (sctrl) {
+			mdss_dsi_panel_bklt_acl(sctrl, level);
+		}
+		mdss_dsi_panel_bklt_acl(ctrl, level);
+	} else {
+		mdss_dsi_panel_bklt_acl(ctrl, level);
+		if (sctrl) {
+			mdss_dsi_panel_bklt_acl(sctrl, level);
+		}
+	}
+
+
+	pr_info("%s:-\n", __func__);
+	return 0;
+}
+
+int mdss_dsi_panel_hbm(struct mdss_panel_data *pdata, int level)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+
+	pr_info("%s: level == %d\n", __func__, level);
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	if (old_bl_level != 255) {
+		pr_err("%s: old_level = %d return\n", __func__, old_bl_level);
+		return 0;
+	}
+
+	if (level == 1)
+		mdss_dsi_panel_acl(pdata, 0);
+	else if (old_bl_level != 255)
+		mdss_dsi_panel_acl(pdata, 2);
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+			    panel_data);
+
+	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+
+	if (!mdss_dsi_sync_wait_enable(ctrl)) {
+		mdss_dsi_panel_bklt_hbm(ctrl, level);
+		pr_info("%s: mdss_dsi_sync_wait_enable-\n", __func__);
+		return 0;
+	}
+	/*
+	 * DCS commands to update backlight are usually sent at
+	 * the same time to both the controllers. However, if
+	 * sync_wait is enabled, we need to ensure that the
+	 * dcs commands are first sent to the non-trigger
+	 * controller so that when the commands are triggered,
+	 * both controllers receive it at the same time.
+	 */
+	sctrl = mdss_dsi_get_other_ctrl(ctrl);
+	if (mdss_dsi_sync_wait_trigger(ctrl)) {
+		if (sctrl) {
+			mdss_dsi_panel_bklt_hbm(sctrl, level);
+		}
+		mdss_dsi_panel_bklt_hbm(ctrl, level);
+	} else {
+		mdss_dsi_panel_bklt_hbm(ctrl, level);
+		if (sctrl) {
+			mdss_dsi_panel_bklt_hbm(sctrl, level);
+		}
+	}
+
+
+	pr_info("%s:-\n", __func__);
+	return 0;
+}
+
+struct mdss_dsi_ctrl_pdata *g_ctrl_pdata;
+
+static int panel_acl_proc_show(struct seq_file *m, void *v)
+{
+
+	seq_printf(m, "%d\n", g_ctrl_pdata->current_acl_level);
+
+	return 0;
+}
+
+static int panel_acl_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, panel_acl_proc_show, NULL);
+}
+
+
+
+static ssize_t panel_acl_proc_write(struct file *file, const char __user *buffer,
+				    size_t count, loff_t *pos)
+{
+	int ret;
+	int rc;
+
+	rc = kstrtoint_from_user(buffer, count, 0, &ret);
+	if (rc)
+		return rc;
+
+
+	g_ctrl_pdata->current_acl_level = ret;
+
+
+	pr_info("%s : current_acl_level = %d\n", __func__, g_ctrl_pdata->current_acl_level);
+
+	mdss_dsi_panel_acl(&(g_ctrl_pdata->panel_data), g_ctrl_pdata->current_acl_level);
+
+	return 1;
+}
+
+
+static const struct file_operations panel_acl_proc_fops = {
+	.open		= panel_acl_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	       = single_release,
+	.write		= panel_acl_proc_write,
+};
+
+static int panel_acl_proc_init(void)
+{
+	struct proc_dir_entry *res;
+
+	res = proc_create("panel_acl_switch", S_IWUGO | S_IRUGO, NULL, &panel_acl_proc_fops);
+	if (!res) {
+		pr_err("failed to create /proc/panel_acl_switch\n");
+		return -ENOMEM;
+	}
+
+	pr_info("created /proc/panel_acl_switch\n");
+	return 0;
+}
+
+static int panel_hbm_proc_show(struct seq_file *m, void *v)
+{
+
+	seq_printf(m, "%d\n", g_ctrl_pdata->current_hbm_level);
+
+	return 0;
+}
+
+static int panel_hbm_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, panel_hbm_proc_show, NULL);
+}
+
+
+
+static ssize_t panel_hbm_proc_write(struct file *file, const char __user *buffer,
+				    size_t count, loff_t *pos)
+{
+	int ret;
+	int rc;
+
+	rc = kstrtoint_from_user(buffer, count, 0, &ret);
+	if (rc)
+		return rc;
+
+
+	g_ctrl_pdata->current_hbm_level = ret;
+
+	pr_err("%s : current_hbm_level = %d\n", __func__, g_ctrl_pdata->current_hbm_level);
+
+	mdss_dsi_panel_hbm(&(g_ctrl_pdata->panel_data), g_ctrl_pdata->current_hbm_level);
+
+	return 1;
+}
+
+
+static const struct file_operations panel_hbm_proc_fops = {
+	.open		= panel_hbm_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= panel_hbm_proc_write,
+};
+
+static int panel_hbm_proc_init(void)
+{
+	struct proc_dir_entry *res;
+
+	res = proc_create("panel_hbm_switch", S_IWUGO | S_IRUGO, NULL,  &panel_hbm_proc_fops);
+	if (!res) {
+		pr_err("failed to create /proc/panel_hbm_switch\n");
+		return -ENOMEM;
+	}
+
+	pr_info("created /proc/panel_hbm_switch\n");
+
+	return 0;
+}
+
+static int  samsung_panel_proc_init(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int ret = -1;
+	static int initial_flag = 0;
+
+	if (ctrl_pdata == NULL)
+		goto end;
+	if (initial_flag == 1)
+		goto end;
+	else
+		initial_flag = 1;
+	g_ctrl_pdata = ctrl_pdata;
+	ret = panel_acl_proc_init();
+	ret = panel_hbm_proc_init();
+end:
+	return ret;
+}
+
+
+#endif
+
 ssize_t mdss_dsi_panel_lcd_read_proc(struct file *file, char __user *page, size_t size, loff_t *ppos)
 {
 	int len = 0;
 	printk("LCD %s:---enter---\n",__func__);
 
-    if (*ppos)      // ADB call again
-    {
+	/* ADB call again */
+	if (*ppos)
         return 0;
-    }
+
 	len = sprintf(page, "%s\n", module_name);
 	*ppos += len;
+
 	return len;
 }
 static const struct file_operations proc_ops = {
@@ -66,11 +406,14 @@ static ssize_t mdss_dsi_panel_lcd_read_frame_count(struct file *file, char __use
 {
 	int len = 0;
 
-	if (*ppos)/*ADB call again*/
+	/* ADB call again */
+	if (*ppos)
 		return 0;
+
 	len = snprintf(NULL, 0, "%d\n", zte_frame_count);
 	len = snprintf(page, len, "%d\n", zte_frame_count);
 	*ppos += len;
+
 	return len;
 }
 
@@ -296,6 +639,11 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 			return;
 	}
 	}
+
+#ifdef ZTE_BRIGHTNESS_CALIBRATION_NOT
+	bl_level = level;
+	pr_err("LCD %s: flag=%d level=%d -> new_level=%d\n", __func__, power_on_flag, level, bl_level);
+#else
 	if (level <11)
 		bl_level = level;
 	else if (level == 11)
@@ -303,16 +651,20 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	else
 		bl_level = (15*level*level + 6059*level+29580)/10000;
 
-	printk("LCD %s: level=%d -> new_level=%d\n", __func__, level,bl_level);
+	pr_err("LCD %s: flag=%d level=%d -> new_level=%d\n", __func__, power_on_flag, level, bl_level);
+#endif
 
 	led_pwm1[1] = (unsigned char)bl_level;
-	if (power_on_flag==1)
-	{
+
+	if (power_on_flag == 1) {
+		led_pwm2[1] = 0x20;
+		power_on_flag = 2;
+	} else if (power_on_flag == 2) {
 		led_pwm2[1] = 0x20;
 		power_on_flag=0;
-	}
-	else
+	} else
 		led_pwm2[1] = 0x28;
+
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = backlight_cmd;
 	cmdreq.cmds_cnt = 4;
@@ -1145,10 +1497,10 @@ static char key_disable[] = {0xf0, 0xa5, 0xa5};
 
 /* pack into one frame before sent */
 static struct dsi_cmd_desc set_col_page_addr_cmd[] = {
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(key_enable)}, key_enable},
-	{{DTYPE_DCS_LWRITE, 0, 0, 0, 1, sizeof(caset)}, caset},	/* packed */
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(paset)}, paset},
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(key_disable)}, key_disable},
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(key_enable)}, key_enable},
+	{{DTYPE_DCS_LWRITE, 0, 0, 0, 0, sizeof(caset)}, caset},	/* packed */
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(paset)}, paset},
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(key_disable)}, key_disable},
 };
 
 static void mdss_dsi_send_col_page_addr(struct mdss_dsi_ctrl_pdata *ctrl,
@@ -1315,7 +1667,9 @@ void mdss_dsi_panel_3v_power(struct mdss_panel_data *pdata, int enable)
 			pr_debug("%s:%d, lcd_3v_vsp_en_gpio not configured\n",
 				 __func__, __LINE__);
 		}
+#ifndef ZTE_SAMSUNG_ACL_HBM
 		msleep(5);
+#endif
 
 	} else {
 			if (gpio_is_valid(ctrl_pdata->lcd_3v_vsp_en_gpio)){
@@ -1323,7 +1677,9 @@ void mdss_dsi_panel_3v_power(struct mdss_panel_data *pdata, int enable)
 				//gpio_set_value((ctrl_pdata->lcd_5v_vsp_en_gpio), 0);
 				gpio_direction_output((ctrl_pdata->lcd_3v_vsp_en_gpio), 0);
 			}
+#ifndef ZTE_SAMSUNG_ACL_HBM
 			msleep(2);
+#endif
 	}
 }
 
@@ -1414,6 +1770,56 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
 		break;
 	case BL_DCS_CMD:
+#ifdef ZTE_SAMSUNG_ACL_HBM
+		if (!mdss_dsi_sync_wait_enable(ctrl_pdata)) {
+			mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
+			if (bl_level == 255)
+				mdss_dsi_panel_bklt_acl(ctrl_pdata, 0);
+			else if (old_bl_level == 255 || old_bl_level == 0)
+				mdss_dsi_panel_bklt_acl(ctrl_pdata, 2);
+			break;
+		}
+		/*
+		 * DCS commands to update backlight are usually sent at
+		 * the same time to both the controllers. However, if
+		 * sync_wait is enabled, we need to ensure that the
+		 * dcs commands are first sent to the non-trigger
+		 * controller so that when the commands are triggered,
+		 * both controllers receive it at the same time.
+		 */
+		sctrl = mdss_dsi_get_other_ctrl(ctrl_pdata);
+		if (mdss_dsi_sync_wait_trigger(ctrl_pdata)) {
+			if (sctrl) {
+				mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
+				if (bl_level == 255)
+					mdss_dsi_panel_bklt_acl(sctrl, 0);
+				else if (old_bl_level == 255 || old_bl_level == 0)
+					mdss_dsi_panel_bklt_acl(sctrl, 2);
+			}
+			mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
+			if (bl_level == 255)
+				mdss_dsi_panel_bklt_acl(ctrl_pdata, 0);
+			else if (old_bl_level == 255 || old_bl_level == 0)
+				mdss_dsi_panel_bklt_acl(ctrl_pdata, 2);
+		} else {
+			mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
+			if (bl_level == 255)
+				mdss_dsi_panel_bklt_acl(ctrl_pdata, 0);
+			else if (old_bl_level == 255 || old_bl_level == 0)
+				mdss_dsi_panel_bklt_acl(ctrl_pdata, 2);
+			if (sctrl) {
+				mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
+				if (bl_level == 255)
+					mdss_dsi_panel_bklt_acl(sctrl, 0);
+				else if (old_bl_level == 255 || old_bl_level == 0)
+					mdss_dsi_panel_bklt_acl(sctrl, 2);
+			}
+		}
+
+		old_bl_level = bl_level;
+		pr_info("%s: level=%d old_bl_level %d acl %d\n", __func__, bl_level, old_bl_level, led_acl_mode[1]);
+
+#else
 		if (!mdss_dsi_sync_wait_enable(ctrl_pdata)) {
 			mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
 			break;
@@ -1436,6 +1842,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			if (sctrl)
 				mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
 		}
+#endif
 		break;
 	default:
 		pr_err("%s: Unknown bl_ctrl configuration\n",
@@ -2964,11 +3371,15 @@ static int  mdss_dsi_panel_config_res_properties(struct device_node *np,
 	int rc = 0;
 
 	mdss_dsi_parse_roi_alignment(np, pt);
-
+#ifdef ZTE_SAMSUNG_ACL_HBM
+	mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
+				"qcom,mdss-dsi-on-command-acl",
+				"qcom,mdss-dsi-on-command-state");
+#else
 	mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
 		"qcom,mdss-dsi-on-command",
 		"qcom,mdss-dsi-on-command-state");
-
+#endif
 	mdss_dsi_parse_dcs_cmds(np, &pt->post_panel_on_cmds,
 		"qcom,mdss-dsi-post-panel-on-command", NULL);
 
@@ -3348,6 +3759,9 @@ int mdss_dsi_panel_init(struct device_node *node,
       mutex_init(&zte_display_lock);
 	  zte_display_init=1;
 	}
+#ifdef ZTE_SAMSUNG_ACL_HBM
+   samsung_panel_proc_init(ctrl_pdata);
+#endif
 
 
 

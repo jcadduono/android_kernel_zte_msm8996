@@ -369,17 +369,20 @@ void pm_show_rpm_stats(void)
 	struct msm_rpmstats_private_data powerdebug = {0};
 	struct msm_rpmstats_private_data *prvdata = NULL;
 	struct msm_rpmstats_platform_data *pdata = NULL;
-	static char buf[300] = {0};
+	static char buf[320] = {0};
 	char *temp = NULL;
 	unsigned long long count = 0;
 
 	pdata = rpm_data;
 	prvdata = &powerdebug;
+	if (!pdata) {
+		pr_err("%s: ERROR rpm_data point is null\n", __func__);
+		return;
+	}
 
 	prvdata->reg_base = ioremap_nocache(pdata->phys_addr_base,
 					pdata->phys_size);
 	if (!prvdata->reg_base) {
-		kfree(prvdata);
 		pr_err("%s: ERROR could not ioremap start=%pa, len=%u\n",
 			__func__, &pdata->phys_addr_base,
 			pdata->phys_size);

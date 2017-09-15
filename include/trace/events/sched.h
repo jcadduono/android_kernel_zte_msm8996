@@ -124,6 +124,7 @@ TRACE_EVENT(sched_enq_deq_task,
 			)
 );
 
+#ifdef CONFIG_TASK_DELAY_ACCT
 TRACE_EVENT(sched_delay_wait_memory_io,
 	TP_PROTO(struct task_struct *p),
 	TP_ARGS(p),
@@ -153,6 +154,7 @@ TRACE_EVENT(sched_delay_wait_swap_io,
 	TP_printk("process [%u] swap io delay %llu nsec",
 		__entry->pid, __entry->delay)
 );
+#endif
 
 #ifdef CONFIG_SCHED_HMP
 
@@ -1122,6 +1124,7 @@ DEFINE_EVENT(sched_stat_runtime, sched_stat_runtime,
 	     TP_PROTO(struct task_struct *tsk, u64 runtime, u64 vruntime),
 	     TP_ARGS(tsk, runtime, vruntime));
 
+#ifdef CONFIG_TASK_DELAY_ACCT
 DECLARE_EVENT_CLASS(sched_cpuwait_summary,
 
 	TP_PROTO(struct task_struct *tsk, uid_t uid, u64 delta,
@@ -1209,7 +1212,7 @@ DECLARE_EVENT_CLASS(sched_iowait_summary,
 DEFINE_EVENT(sched_iowait_summary, sched_iowait_summary,
 	TP_PROTO(struct task_struct *p, u64 delta, u64 delta1, u64 delta2),
 	TP_ARGS(p, delta, delta1, delta2));
-
+#endif
 /*
  * Tracepoint for showing priority inheritance modifying a tasks
  * priority.

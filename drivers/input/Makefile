@@ -35,5 +35,5 @@ ifeq ($(ZTE_FINGERPRINT_MODE_318),true)
 obj-$(CONFIG_FINGERPRINT_GOODIX_GF3118M) += fingerprint/goodix/
 endif
 ifeq ($(ZTE_FINGERPRINT_MODE_3238),true)
-obj-$(CONFIG_FINGERPRINT_GOODIX_GF3238M) += fingerprint/gf3238_kernel/
+obj-$(CONFIG_FINGERPRINT_GOODIX_GF3238M) += fingerprint/gf3238_driver/
 endif

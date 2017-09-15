@@ -45,18 +45,6 @@
 #undef PP_DEBUGFS
 #undef PP_VMALLOC
 
-#ifndef pr_err
-#define pr_err(fmt, arg...) printk(KERN_ERR fmt, ##arg)
-#endif /* pr_err */
-
-#ifndef pr_warn
-#define pr_warn(fmt, arg...) printk(KERN_WARNING fmt, ##arg)
-#endif /* pr_warn */
-
-#ifndef pr_info
-#define pr_info(fmt, arg...) printk(KERN_INFO fmt, ##arg)
-#endif /* pr_info */
-
 #if defined(PP_VMALLOC)
 #define pp_zalloc(size) vzalloc(size)
 #define pp_free(ptr) vfree(ptr)
@@ -79,26 +67,26 @@
 typedef struct {
 	uint32_t start_bit;
 	uint64_t node_map;
-} __attribute__ ((packed)) policy_node_t;
+} __packed policy_node_t;
 
 typedef struct {
 	uint32_t map_size;
 	uint32_t high_bit;
 	uint32_t node_count;
 	policy_node_t *node_list;
-} __attribute__ ((packed)) policy_bitmap_t;
+} __packed policy_bitmap_t;
 
 typedef struct {
 	policy_bitmap_t types;
 	policy_bitmap_t negset;
 	uint32_t flags;
-} __attribute__ ((packed)) policy_type_set_t;
+} __packed policy_type_set_t;
 
 typedef struct {
 	uint32_t name_len;
 	uint32_t datums;
 	char *name;
-} __attribute__ ((packed)) policy_perm_t;
+} __packed policy_perm_t;
 
 typedef struct {
 	uint32_t expr_type;
@@ -106,13 +94,13 @@ typedef struct {
 	uint32_t op;
 	policy_bitmap_t names;
 	policy_type_set_t type_names;
-} __attribute__ ((packed)) policy_expression_t;
+} __packed policy_expression_t;
 
 typedef struct {
 	uint32_t perms;
 	uint32_t expression_num;
 	policy_expression_t *expression_list;
-} __attribute__ ((packed)) policy_constraints_t;
+} __packed policy_constraints_t;
 
 typedef struct {
 	uint32_t sens_num;
@@ -120,18 +108,18 @@ typedef struct {
 	uint32_t sens_high;
 	policy_bitmap_t cat_low;
 	policy_bitmap_t cat_high;
-} __attribute__ ((packed)) policy_exp_range_t;
+} __packed policy_exp_range_t;
 
 typedef struct {
 	uint32_t sens;
 	policy_bitmap_t cat;
-} __attribute__ ((packed)) policy_exp_dfltlevel_t;
+} __packed policy_exp_dfltlevel_t;
 
 typedef struct {
 	uint8_t specified;
 	uint8_t driver;
 	uint32_t perms[PP_PERMS_LEN];
-} __attribute__ ((packed)) policy_avtab_extended_perms_t;
+} __packed policy_avtab_extended_perms_t;
 
 typedef struct {
 	uint16_t source_type;
@@ -140,17 +128,17 @@ typedef struct {
 	uint16_t specified;
 	policy_avtab_extended_perms_t extended_perms;
 	uint32_t datums;
-} __attribute__ ((packed)) policy_avtab_item_t;
+} __packed policy_avtab_item_t;
 
 typedef struct {
 	uint32_t expr_type;
 	uint32_t boolean;
-} __attribute__ ((packed)) policy_cond_expr_t;
+} __packed policy_cond_expr_t;
 
 typedef struct {
 	uint32_t element_num;
 	policy_avtab_item_t *av_list;
-} __attribute__ ((packed)) policy_av_list_t;
+} __packed policy_av_list_t;
 
 typedef struct {
 	uint32_t cur_state;
@@ -158,19 +146,19 @@ typedef struct {
 	policy_cond_expr_t *expression_list;
 	policy_av_list_t true_list;
 	policy_av_list_t false_list;
-} __attribute__ ((packed)) policy_condlist_item_t;
+} __packed policy_condlist_item_t;
 
 typedef struct {
 	uint32_t role;
 	uint32_t role_type;
 	uint32_t new_role;
 	uint32_t tclass;
-} __attribute__ ((packed)) policy_roletrans_item_t;
+} __packed policy_roletrans_item_t;
 
 typedef struct {
 	uint32_t role;
 	uint32_t new_role;
-} __attribute__ ((packed)) policy_roleallow_item_t;
+} __packed policy_roleallow_item_t;
 
 typedef struct {
 	uint32_t name_len;
@@ -179,53 +167,53 @@ typedef struct {
 	uint32_t ttype;
 	uint32_t tclass;
 	uint32_t otype;
-} __attribute__ ((packed)) policy_filenametrans_item_t;
+} __packed policy_filenametrans_item_t;
 
 typedef struct {
 	uint32_t user;
 	uint32_t role;
 	uint32_t ctype;
 	policy_exp_range_t exp_range;
-} __attribute__ ((packed)) policy_context_t;
+} __packed policy_context_t;
 
 typedef struct {
 	uint32_t sid;
 	policy_context_t con;
-} __attribute__ ((packed)) policy_ocon_isid_t;
+} __packed policy_ocon_isid_t;
 
 typedef struct {
 	uint32_t name_len;
 	char *name;
 	policy_context_t con_0;
 	policy_context_t con_1;
-} __attribute__ ((packed)) policy_ocon_fs_t;
+} __packed policy_ocon_fs_t;
 
 typedef struct {
 	uint32_t protocol;
 	uint32_t low_port;
 	uint32_t high_port;
 	policy_context_t con;
-} __attribute__ ((packed)) policy_ocon_port_t;
+} __packed policy_ocon_port_t;
 
 typedef struct {
 	uint32_t name_len;
 	char *name;
 	policy_context_t con_0;
 	policy_context_t con_1;
-} __attribute__ ((packed)) policy_ocon_netif_t;
+} __packed policy_ocon_netif_t;
 
 typedef struct {
 	uint32_t addr;
 	uint32_t mask;
 	policy_context_t con;
-} __attribute__ ((packed)) policy_ocon_node_t;
+} __packed policy_ocon_node_t;
 
 typedef struct {
 	uint32_t behavior;
 	uint32_t name_len;
 	char *name;
 	policy_context_t con;
-} __attribute__ ((packed)) policy_ocon_fsuse_t;
+} __packed policy_ocon_fsuse_t;
 
 typedef struct {
 	uint32_t addr_0;
@@ -237,36 +225,36 @@ typedef struct {
 	uint32_t mask_2;
 	uint32_t mask_3;
 	policy_context_t con;
-} __attribute__ ((packed)) policy_ocon_node6_t;
+} __packed policy_ocon_node6_t;
 
 typedef struct {
 	void *foo;
-} __attribute__ ((packed)) policy_ocon_genfs_t;
+} __packed policy_ocon_genfs_t;
 
 typedef struct {
 	uint32_t name_len;
 	char *name;
 	uint32_t sclass;
 	policy_context_t con;
-} __attribute__ ((packed)) policy_genfs_ocon_item_t;
+} __packed policy_genfs_ocon_item_t;
 
 typedef struct {
 	uint32_t fstype_len;
 	char *fstype;
 	uint32_t ocon_num;
 	policy_genfs_ocon_item_t *ocon_list;
-} __attribute__ ((packed)) policy_genfs_item_t;
+} __packed policy_genfs_item_t;
 
 typedef struct {
 	uint32_t source_type;
 	uint32_t target_type;
 	uint32_t target_class;
 	policy_exp_range_t target_range;
-} __attribute__ ((packed)) policy_range_item_t;
+} __packed policy_range_item_t;
 
 typedef struct {
 	policy_bitmap_t attr_map;
-} __attribute__ ((packed)) policy_typeattr_map_item_t;
+} __packed policy_typeattr_map_item_t;
 
 /*
  * Policy Layout Definition
@@ -278,7 +266,7 @@ typedef struct {
 	uint32_t element_num;
 	char *name;
 	policy_perm_t *perm_list;
-} __attribute__ ((packed)) policy_common_t;
+} __packed policy_common_t;
 
 typedef struct {
 	uint32_t name_len;
@@ -297,7 +285,7 @@ typedef struct {
 	uint32_t default_role;
 	uint32_t default_range;
 	uint32_t default_type;
-} __attribute__ ((packed)) policy_classes_t;
+} __packed policy_classes_t;
 
 typedef struct {
 	uint32_t name_len;
@@ -306,7 +294,7 @@ typedef struct {
 	char *name;
 	policy_bitmap_t dominates;
 	policy_bitmap_t types;
-} __attribute__ ((packed)) policy_roles_t;
+} __packed policy_roles_t;
 
 typedef struct {
 	uint32_t name_len;
@@ -314,7 +302,7 @@ typedef struct {
 	uint32_t properties;
 	uint32_t bounds;
 	char *name;
-} __attribute__ ((packed)) policy_types_t;
+} __packed policy_types_t;
 
 typedef struct {
 	uint32_t name_len;
@@ -324,59 +312,59 @@ typedef struct {
 	policy_bitmap_t roles;
 	policy_exp_range_t exp_range;
 	policy_exp_dfltlevel_t exp_dfltlevel;
-} __attribute__ ((packed)) policy_users_t;
+} __packed policy_users_t;
 
 typedef struct {
 	uint32_t datums;
 	uint32_t state;
 	uint32_t name_len;
 	char *name;
-} __attribute__ ((packed)) policy_bools_t;
+} __packed policy_bools_t;
 
 typedef struct {
 	uint32_t name_len;
 	uint32_t isalias;
 	char *name;
 	policy_exp_dfltlevel_t level;
-} __attribute__ ((packed)) policy_levels_t;
+} __packed policy_levels_t;
 
 typedef struct {
 	uint32_t name_len;
 	uint32_t datums;
 	uint32_t isalias;
 	char *name;
-} __attribute__ ((packed)) policy_cats_t;
+} __packed policy_cats_t;
 
 typedef struct {
 	uint32_t primary_name_num;
 	uint32_t element_num;
 	void *attr_list;
-} __attribute__ ((packed)) policy_symtab_t;
+} __packed policy_symtab_t;
 
 typedef struct {
 	uint32_t element_num;
 	policy_avtab_item_t *attr_list;
-} __attribute__ ((packed)) policy_avtab_t;
+} __packed policy_avtab_t;
 
 typedef struct {
 	uint32_t element_num;
 	policy_condlist_item_t *attr_list;
-} __attribute__ ((packed)) policy_condlist_t;
+} __packed policy_condlist_t;
 
 typedef struct {
 	uint32_t element_num;
 	policy_roletrans_item_t *attr_list;
-} __attribute__ ((packed)) policy_roletrans_t;
+} __packed policy_roletrans_t;
 
 typedef struct {
 	uint32_t element_num;
 	policy_roleallow_item_t *attr_list;
-} __attribute__ ((packed)) policy_roleallow_t;
+} __packed policy_roleallow_t;
 
 typedef struct {
 	uint32_t element_num;
 	policy_filenametrans_item_t *attr_list;
-} __attribute__ ((packed)) policy_filenametrans_t;
+} __packed policy_filenametrans_t;
 
 typedef struct {
 	uint32_t element_num;
@@ -396,22 +384,22 @@ typedef struct {
 	policy_ocon_node6_t *node6_list;
 	uint32_t genfs_num;
 	policy_ocon_genfs_t *genfs_list;
-} __attribute__ ((packed)) policy_ocontext_t;
+} __packed policy_ocontext_t;
 
 typedef struct {
 	uint32_t element_num;
 	policy_genfs_item_t *attr_list;
-} __attribute__ ((packed)) policy_genfs_t;
+} __packed policy_genfs_t;
 
 typedef struct {
 	uint32_t element_num;
 	policy_range_item_t *attr_list;
-} __attribute__ ((packed)) policy_range_t;
+} __packed policy_range_t;
 
 typedef struct {
 	uint32_t element_num;
 	policy_typeattr_map_item_t *attr_list;
-} __attribute__ ((packed)) policy_typeattr_map_t;
+} __packed policy_typeattr_map_t;
 
 typedef struct {
 	uint32_t magic;
@@ -440,7 +428,7 @@ typedef struct {
 	policy_genfs_t genfs;
 	policy_range_t range;
 	policy_typeattr_map_t typeattr_map;
-} __attribute__ ((packed)) policy_db_t;
+} __packed policy_db_t;
 
 /*
  * Policy Description Definition
@@ -1189,7 +1177,8 @@ static int pp_read_cons(struct policy_file *fp, policy_constraints_t *cons)
 	cons->expression_list = pp_zalloc(cons->expression_num * sizeof(policy_expression_t));
 	if (!cons->expression_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"expression list of length %u\n", (uint32_t)(cons->expression_num * sizeof(policy_expression_t)));
+				"expression list of length %u\n",
+				(uint32_t)(cons->expression_num * sizeof(policy_expression_t)));
 		return -ENOMEM;
 	}
 
@@ -1357,7 +1346,8 @@ static int pp_read_common_helper(struct policy_file *fp, policy_common_t *common
 		common->perm_list = pp_zalloc(common->element_num * sizeof(policy_perm_t));
 		if (!common->perm_list) {
 			pr_err("SELinux: unable to allocate memory for policydb "
-						"permission list of length %u\n", (uint32_t)(common->element_num * sizeof(policy_perm_t)));
+					"permission list of length %u\n",
+					(uint32_t)(common->element_num * sizeof(policy_perm_t)));
 			rc = -ENOMEM;
 			goto pp_read_common_helper_fail;
 		}
@@ -1410,7 +1400,8 @@ static int pp_read_common(struct policy_file *fp, policy_db_t *db)
 	db->symtab_common.attr_list = pp_zalloc(db->symtab_common.element_num * sizeof(policy_common_t));
 	if (!db->symtab_common.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-		       "attribute list of length %u\n", (uint32_t)(db->symtab_common.element_num * sizeof(policy_common_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->symtab_common.element_num * sizeof(policy_common_t)));
 		return -ENOMEM;
 	}
 	list = (policy_common_t *)db->symtab_common.attr_list;
@@ -1502,7 +1493,8 @@ static int pp_read_classes_helper(struct policy_file *fp, policy_classes_t *clas
 		classes->perm_list = pp_zalloc(classes->element_num * sizeof(policy_perm_t));
 		if (!classes->perm_list) {
 			pr_err("SELinux: unable to allocate memory for policydb "
-						"permission list of length %u\n", (uint32_t)(classes->element_num * sizeof(policy_perm_t)));
+					"permission list of length %u\n",
+					(uint32_t)(classes->element_num * sizeof(policy_perm_t)));
 			rc = -ENOMEM;
 			goto pp_read_classes_helper_fail;
 		}
@@ -1519,7 +1511,8 @@ static int pp_read_classes_helper(struct policy_file *fp, policy_classes_t *clas
 		classes->constraints_list = pp_zalloc(classes->constraints_num * sizeof(policy_constraints_t));
 		if (!classes->constraints_list) {
 			pr_err("SELinux: unable to allocate memory for policydb "
-						"constraints list of length %u\n", (uint32_t)(classes->constraints_num * sizeof(policy_constraints_t)));
+					"constraints list of length %u\n",
+					(uint32_t)(classes->constraints_num * sizeof(policy_constraints_t)));
 			rc = -ENOMEM;
 			goto pp_read_classes_helper_fail;
 		}
@@ -1541,7 +1534,8 @@ static int pp_read_classes_helper(struct policy_file *fp, policy_classes_t *clas
 		classes->validatetrans_list = pp_zalloc(classes->validatetrans_num * sizeof(policy_constraints_t));
 		if (!classes->validatetrans_list) {
 			pr_err("SELinux: unable to allocate memory for policydb "
-						"validatetrans list of length %u\n", (uint32_t)(classes->validatetrans_num * sizeof(policy_constraints_t)));
+					"validatetrans list of length %u\n",
+					(uint32_t)(classes->validatetrans_num * sizeof(policy_constraints_t)));
 			rc = -ENOMEM;
 			goto pp_read_classes_helper_fail;
 		}
@@ -1633,7 +1627,8 @@ static int pp_read_classes(struct policy_file *fp, policy_db_t *db)
 	db->symtab_classes.attr_list = pp_zalloc(db->symtab_classes.element_num * sizeof(policy_classes_t));
 	if (!db->symtab_classes.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->symtab_classes.element_num * sizeof(policy_classes_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->symtab_classes.element_num * sizeof(policy_classes_t)));
 		return -ENOMEM;
 	}
 	list = (policy_classes_t *)db->symtab_classes.attr_list;
@@ -1735,7 +1730,8 @@ static int pp_read_roles(struct policy_file *fp, policy_db_t *db)
 	db->symtab_roles.attr_list = pp_zalloc(db->symtab_roles.element_num * sizeof(policy_roles_t));
 	if (!db->symtab_roles.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->symtab_roles.element_num * sizeof(policy_roles_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->symtab_roles.element_num * sizeof(policy_roles_t)));
 		return -ENOMEM;
 	}
 	list = (policy_roles_t *)db->symtab_roles.attr_list;
@@ -1834,7 +1830,8 @@ static int pp_read_types(struct policy_file *fp, policy_db_t *db)
 	db->symtab_types.attr_list = pp_zalloc(db->symtab_types.element_num * sizeof(policy_types_t));
 	if (!db->symtab_types.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->symtab_types.element_num * sizeof(policy_types_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->symtab_types.element_num * sizeof(policy_types_t)));
 		return -ENOMEM;
 	}
 	list = (policy_types_t *)db->symtab_types.attr_list;
@@ -1941,7 +1938,8 @@ static int pp_read_users(struct policy_file *fp, policy_db_t *db)
 	db->symtab_users.attr_list = pp_zalloc(db->symtab_users.element_num * sizeof(policy_users_t));
 	if (!db->symtab_users.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->symtab_users.element_num * sizeof(policy_users_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->symtab_users.element_num * sizeof(policy_users_t)));
 		return -ENOMEM;
 	}
 	list = (policy_users_t *)db->symtab_users.attr_list;
@@ -2035,7 +2033,8 @@ static int pp_read_bools(struct policy_file *fp, policy_db_t *db)
 	db->symtab_bools.attr_list = pp_zalloc(db->symtab_bools.element_num * sizeof(policy_bools_t));
 	if (!db->symtab_bools.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->symtab_bools.element_num * sizeof(policy_bools_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->symtab_bools.element_num * sizeof(policy_bools_t)));
 		return -ENOMEM;
 	}
 	list = (policy_bools_t *)db->symtab_bools.attr_list;
@@ -2127,7 +2126,8 @@ static int pp_read_levels(struct policy_file *fp, policy_db_t *db)
 	db->symtab_levels.attr_list = pp_zalloc(db->symtab_levels.element_num * sizeof(policy_levels_t));
 	if (!db->symtab_levels.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->symtab_levels.element_num * sizeof(policy_levels_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->symtab_levels.element_num * sizeof(policy_levels_t)));
 		return -ENOMEM;
 	}
 	list = (policy_levels_t *)db->symtab_levels.attr_list;
@@ -2221,7 +2221,8 @@ static int pp_read_cats(struct policy_file *fp, policy_db_t *db)
 	db->symtab_cats.attr_list = pp_zalloc(db->symtab_cats.element_num * sizeof(policy_cats_t));
 	if (!db->symtab_cats.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->symtab_cats.element_num * sizeof(policy_cats_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->symtab_cats.element_num * sizeof(policy_cats_t)));
 		return -ENOMEM;
 	}
 	list = (policy_cats_t *)db->symtab_cats.attr_list;
@@ -2320,7 +2321,8 @@ static int pp_read_condlist_item(struct policy_file *fp, policy_condlist_item_t 
 		item->expression_list = pp_zalloc(item->expression_num * sizeof(policy_cond_expr_t));
 		if (!item->expression_list) {
 			pr_err("SELinux: unable to allocate memory for policydb "
-						"expression list of length %u\n", (uint32_t)(item->expression_num * sizeof(policy_cond_expr_t)));
+					"expression list of length %u\n",
+					(uint32_t)(item->expression_num * sizeof(policy_cond_expr_t)));
 			return -ENOMEM;
 		}
 
@@ -2341,7 +2343,8 @@ static int pp_read_condlist_item(struct policy_file *fp, policy_condlist_item_t 
 		item->true_list.av_list = pp_zalloc(item->true_list.element_num * sizeof(policy_avtab_item_t));
 		if (!item->true_list.av_list) {
 			pr_err("SELinux: unable to allocate memory for policydb "
-						"true list of length %u\n", (uint32_t)(item->true_list.element_num * sizeof(policy_avtab_item_t)));
+					"true list of length %u\n",
+					(uint32_t)(item->true_list.element_num * sizeof(policy_avtab_item_t)));
 			rc = -ENOMEM;
 			goto pp_read_condlist_item_fail;
 		}
@@ -2363,7 +2366,8 @@ static int pp_read_condlist_item(struct policy_file *fp, policy_condlist_item_t 
 		item->false_list.av_list = pp_zalloc(item->false_list.element_num * sizeof(policy_avtab_item_t));
 		if (!item->false_list.av_list) {
 			pr_err("SELinux: unable to allocate memory for policydb "
-						"false list of length %u\n", (uint32_t)(item->false_list.element_num * sizeof(policy_avtab_item_t)));
+					"false list of length %u\n",
+					(uint32_t)(item->false_list.element_num * sizeof(policy_avtab_item_t)));
 			rc = -ENOMEM;
 			goto pp_read_condlist_item_fail;
 		}
@@ -2515,7 +2519,8 @@ static int pp_read_ocon_isid(struct policy_file *fp, policy_ocontext_t *ocon)
 	ocon->isid_list = pp_zalloc(ocon->isid_num * sizeof(policy_ocon_isid_t));
 	if (!ocon->isid_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"isid list of length %u\n", (uint32_t)(ocon->isid_num * sizeof(policy_ocon_isid_t)));
+				"isid list of length %u\n",
+				(uint32_t)(ocon->isid_num * sizeof(policy_ocon_isid_t)));
 		return -ENOMEM;
 	}
 	list = ocon->isid_list;
@@ -2635,7 +2640,8 @@ static int pp_read_ocon_port(struct policy_file *fp, policy_ocontext_t *ocon)
 	ocon->port_list = pp_zalloc(ocon->port_num * sizeof(policy_ocon_port_t));
 	if (!ocon->port_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"port list of length %u\n", (uint32_t)(ocon->port_num * sizeof(policy_ocon_port_t)));
+				"port list of length %u\n",
+				(uint32_t)(ocon->port_num * sizeof(policy_ocon_port_t)));
 		return -ENOMEM;
 	}
 	list = ocon->port_list;
@@ -2692,7 +2698,8 @@ static int pp_read_ocon_netif(struct policy_file *fp, policy_ocontext_t *ocon)
 	ocon->netif_list = pp_zalloc(ocon->netif_num * sizeof(policy_ocon_netif_t));
 	if (!ocon->netif_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"netif list of length %u\n", (uint32_t)(ocon->netif_num * sizeof(policy_ocon_netif_t)));
+				"netif list of length %u\n",
+				(uint32_t)(ocon->netif_num * sizeof(policy_ocon_netif_t)));
 		return -ENOMEM;
 	}
 	list = ocon->netif_list;
@@ -2765,7 +2772,8 @@ static int pp_read_ocon_node(struct policy_file *fp, policy_ocontext_t *ocon)
 	ocon->node_list = pp_zalloc(ocon->node_num * sizeof(policy_ocon_node_t));
 	if (!ocon->node_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"node list of length %u\n", (uint32_t)(ocon->node_num * sizeof(policy_ocon_node_t)));
+				"node list of length %u\n",
+				(uint32_t)(ocon->node_num * sizeof(policy_ocon_node_t)));
 		return -ENOMEM;
 	}
 	list = ocon->node_list;
@@ -2817,7 +2825,8 @@ static int pp_read_ocon_fsuse(struct policy_file *fp, policy_ocontext_t *ocon)
 	ocon->fsuse_list = pp_zalloc(ocon->fsuse_num * sizeof(policy_ocon_fsuse_t));
 	if (!ocon->fsuse_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"fsuse list of length %u\n", (uint32_t)(ocon->fsuse_num * sizeof(policy_ocon_fsuse_t)));
+				"fsuse list of length %u\n",
+				(uint32_t)(ocon->fsuse_num * sizeof(policy_ocon_fsuse_t)));
 		return -ENOMEM;
 	}
 	list = ocon->fsuse_list;
@@ -2890,7 +2899,8 @@ static int pp_read_ocon_node6(struct policy_file *fp, policy_ocontext_t *ocon)
 	ocon->node6_list = pp_zalloc(ocon->node6_num * sizeof(policy_ocon_node6_t));
 	if (!ocon->node_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"node6 list of length %u\n", (uint32_t)(ocon->node6_num * sizeof(policy_ocon_node6_t)));
+				"node6 list of length %u\n",
+				(uint32_t)(ocon->node6_num * sizeof(policy_ocon_node6_t)));
 		return -ENOMEM;
 	}
 	list = ocon->node6_list;
@@ -3032,7 +3042,8 @@ static int pp_read_genfs_item(struct policy_file *fp, policy_genfs_item_t *item)
 		item->ocon_list = pp_zalloc(item->ocon_num * sizeof(policy_genfs_ocon_item_t));
 		if (!item->ocon_list) {
 			pr_err("SELinux: unable to allocate memory for policydb "
-						"ocontext list of length %u\n", (uint32_t)(item->ocon_num * sizeof(policy_genfs_ocon_item_t)));
+					"ocontext list of length %u\n",
+					(uint32_t)(item->ocon_num * sizeof(policy_genfs_ocon_item_t)));
 			goto pp_read_genfs_item_fail;
 		}
 
@@ -4477,7 +4488,8 @@ static int pp_parse_avtab(struct policy_file *fp, policy_db_t *db)
 	db->avtab.attr_list = pp_zalloc(db->avtab.element_num * sizeof(policy_avtab_item_t));
 	if (!db->avtab.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->avtab.element_num * sizeof(policy_avtab_item_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->avtab.element_num * sizeof(policy_avtab_item_t)));
 		return -ENOMEM;
 	}
 	list = (policy_avtab_item_t *)db->avtab.attr_list;
@@ -4519,7 +4531,8 @@ static int pp_parse_condlist(struct policy_file *fp, policy_db_t *db)
 	db->condlist.attr_list = pp_zalloc(db->condlist.element_num * sizeof(policy_condlist_item_t));
 	if (!db->condlist.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->condlist.element_num * sizeof(policy_condlist_item_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->condlist.element_num * sizeof(policy_condlist_item_t)));
 		return -ENOMEM;
 	}
 	list = (policy_condlist_item_t *)db->condlist.attr_list;
@@ -4561,7 +4574,8 @@ static int pp_parse_roletrans(struct policy_file *fp, policy_db_t *db)
 	db->roletrans.attr_list = pp_zalloc(db->roletrans.element_num * sizeof(policy_roletrans_item_t));
 	if (!db->roletrans.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->roletrans.element_num * sizeof(policy_roletrans_item_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->roletrans.element_num * sizeof(policy_roletrans_item_t)));
 		return -ENOMEM;
 	}
 	list = (policy_roletrans_item_t *)db->roletrans.attr_list;
@@ -4603,7 +4617,8 @@ static int pp_parse_roleallow(struct policy_file *fp, policy_db_t *db)
 	db->roleallow.attr_list = pp_zalloc(db->roleallow.element_num * sizeof(policy_roleallow_item_t));
 	if (!db->roleallow.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->roleallow.element_num * sizeof(policy_roleallow_item_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->roleallow.element_num * sizeof(policy_roleallow_item_t)));
 		return -ENOMEM;
 	}
 	list = (policy_roleallow_item_t *)db->roleallow.attr_list;
@@ -4645,7 +4660,8 @@ static int pp_parse_filenametrans(struct policy_file *fp, policy_db_t *db)
 	db->filenametrans.attr_list = pp_zalloc(db->filenametrans.element_num * sizeof(policy_filenametrans_item_t));
 	if (!db->filenametrans.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->filenametrans.element_num * sizeof(policy_filenametrans_item_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->filenametrans.element_num * sizeof(policy_filenametrans_item_t)));
 		return -ENOMEM;
 	}
 	list = (policy_filenametrans_item_t *)db->filenametrans.attr_list;
@@ -4729,7 +4745,8 @@ static int pp_parse_genfs(struct policy_file *fp, policy_db_t *db)
 	db->genfs.attr_list = pp_zalloc(db->genfs.element_num * sizeof(policy_genfs_item_t));
 	if (!db->genfs.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->genfs.element_num * sizeof(policy_genfs_item_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->genfs.element_num * sizeof(policy_genfs_item_t)));
 		return -ENOMEM;
 	}
 	list = (policy_genfs_item_t *)db->genfs.attr_list;
@@ -4771,7 +4788,8 @@ static int pp_parse_range(struct policy_file *fp, policy_db_t *db)
 	db->range.attr_list = pp_zalloc(db->range.element_num * sizeof(policy_range_item_t));
 	if (!db->range.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->range.element_num * sizeof(policy_range_item_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->range.element_num * sizeof(policy_range_item_t)));
 		return -ENOMEM;
 	}
 	list = (policy_range_item_t *)db->range.attr_list;
@@ -4809,7 +4827,8 @@ static int pp_parse_typeattr_map(struct policy_file *fp, policy_db_t *db)
 	db->typeattr_map.attr_list = pp_zalloc(db->typeattr_map.element_num * sizeof(policy_typeattr_map_item_t));
 	if (!db->typeattr_map.attr_list) {
 		pr_err("SELinux: unable to allocate memory for policydb "
-					"attribute list of length %u\n", (uint32_t)(db->typeattr_map.element_num * sizeof(policy_typeattr_map_item_t)));
+				"attribute list of length %u\n",
+				(uint32_t)(db->typeattr_map.element_num * sizeof(policy_typeattr_map_item_t)));
 		return -ENOMEM;
 	}
 	list = (policy_typeattr_map_item_t *)db->typeattr_map.attr_list;
@@ -6195,7 +6214,7 @@ int pp_postproc_av_perms(struct policydb *pol, u32 ssid, u32 tsid, u16 tclass, u
 
 	(void)snprintf(scon, len, "u:r:%s:s0", list->stype);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+#if  KERNEL_VERSION(3, 14, 0) <= LINUX_VERSION_CODE
 	rc = security_context_to_sid(scon, len, &sid, GFP_KERNEL);
 #else
 	rc = security_context_to_sid(scon, len, &sid);
@@ -6215,7 +6234,7 @@ int pp_postproc_av_perms(struct policydb *pol, u32 ssid, u32 tsid, u16 tclass, u
 
 	(void)snprintf(tcon, len, "u:object_r:%s:s0", list->ttype);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+#if KERNEL_VERSION(3, 14, 0) <= LINUX_VERSION_CODE
 	rc = security_context_to_sid(tcon, len, &sid, GFP_KERNEL);
 #else
 	rc = security_context_to_sid(tcon, len, &sid);

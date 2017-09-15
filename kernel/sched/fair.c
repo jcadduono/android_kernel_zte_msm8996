@@ -728,7 +728,7 @@ static void update_curr(struct cfs_rq *cfs_rq)
 	curr->vruntime += calc_delta_fair(delta_exec, curr);
 	update_min_vruntime(cfs_rq);
 
-#ifdef CONFIG_TASKSTATS
+#ifdef CONFIG_TASK_DELAY_ACCT
 	if (tracing_is_disabled() == false && entity_is_task(curr)) {
 		struct task_struct *parent = task_of(curr)->group_leader;
 		unsigned long delta = 0;
@@ -796,7 +796,7 @@ static void update_stats_enqueue(struct cfs_rq *cfs_rq, struct sched_entity *se,
 		update_stats_wait_start(cfs_rq, se, migrating);
 }
 
-#ifdef CONFIG_SCHEDSTATS
+#ifdef CONFIG_TASK_DELAY_ACCT
 static void
 log_cpuwait(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
@@ -860,7 +860,9 @@ update_stats_wait_end(struct cfs_rq *cfs_rq, struct sched_entity *se,
 	if (entity_is_task(se)) {
 		trace_sched_stat_wait(task_of(se),
 			rq_clock(rq_of(cfs_rq)) - se->statistics.wait_start);
+#ifdef CONFIG_TASK_DELAY_ACCT
 		log_cpuwait(cfs_rq, se);
+#endif
 	}
 #endif
 	schedstat_set(se->statistics.wait_start, 0);
@@ -4750,7 +4752,7 @@ static inline void dec_throttled_cfs_rq_hmp_stats(struct hmp_sched_stats *stats,
 
 #endif /* CONFIG_SCHED_HMP */
 
-#ifdef CONFIG_SCHEDSTATS
+#ifdef CONFIG_TASK_DELAY_ACCT
 static void log_iowait(struct cfs_rq *cfs_rq, struct sched_entity *se,
 				struct task_struct *tsk)
 {
@@ -4816,7 +4818,9 @@ static void enqueue_sleeper(struct cfs_rq *cfs_rq, struct sched_entity *se)
 				se->statistics.iowait_sum += delta;
 				se->statistics.iowait_count++;
 				trace_sched_stat_iowait(tsk, delta);
+#ifdef CONFIG_TASK_DELAY_ACCT
 				log_iowait(cfs_rq, se, tsk);
+#endif
 			}
 
 			trace_sched_stat_blocked(tsk, delta);

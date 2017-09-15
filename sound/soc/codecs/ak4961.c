@@ -97,9 +97,12 @@ int (*remote_add_codec_controls)(struct snd_soc_codec *codec)
 #endif
 //weizj add for audience es804
 
-
 #define AK4961_NUM_PRAM			9  //for slim_spi 2014-11-17
-#define AK4961_NUM_CRAM			19 //for slim_spi 2014-11-17
+#ifdef AKM_VOICE_CALL
+#define AK4961_NUM_CRAM			20 /*for slim_spi 2014-11-17*/
+#else
+#define AK4961_NUM_CRAM			19 /*for slim_spi 2014-11-17*/
+#endif
 #define AK4961_NUM_ARAM			2 // for aram
 
 static int mic_det_repeat;
@@ -159,6 +162,9 @@ static const char *AK4961_CRAM_FIRMWARES[] = {
 	"ak4961_cram_narrow_hp.bin",
 	"ak4961_cram_narrow_hf.bin",
 	"ak4961_cram_wide_hs.bin",
+#ifdef AKM_VOICE_CALL
+	"ak4961_cram_wide_headset.bin",
+#endif
 	"ak4961_cram_wide_hp.bin",
 	"ak4961_cram_wide_hf.bin",
 	"ak4961_cram_voice_recognition.bin",
@@ -1895,6 +1901,20 @@ static const char *dsp_mode_text[] = {
 	"karaoke_heavy", "karaoke_light", "karaoke_middle"
 };
 #else
+#ifdef AKM_VOICE_CALL
+static const char * const dsp_mode_text[] = {
+	"off",
+	"narrow_handset", "narrow_headset", "narrow_handsfree",
+	"wide_handset", "wide_headset", "wide_headphone", "wide_handsfree",
+	"voice_recognition",
+	"sound_record", "voice_record", "wchat_record",
+	"music_speaker",
+	"interview_record",
+	"barge_in",
+	"karaoke_live", "karaoke_room", "karaoke_cave",
+	"karaoke_spk_room", "karaoke_spk_live", "karaoke_spk_theater"
+};
+#else
 static const char *dsp_mode_text[] = {
 	"off",
 	"narrow_handset", "narrow_headset", "narrow_handsfree",
@@ -1908,6 +1928,7 @@ static const char *dsp_mode_text[] = {
 	"karaoke_spk_room", "karaoke_spk_live", "karaoke_spk_theater"
 };
 #endif
+#endif
 
 #if 0
 static const u16 ram_table[] = {
@@ -1918,6 +1939,19 @@ static const u16 ram_table[] = {
 	0x4A0,					// Music Speaker
 	0x500,					// Barge-in
 	0x6B1, 0x6C2, 0x6D3		// Karaoke
+};
+#else
+#ifdef AKM_VOICE_CALL
+static const u16 ram_table[] = {
+	0x0010, 0x0020, 0x0030,			/* NARROW_MODE*/
+	0x1040, 0x1050, 0x1060, 0x1070,	/* WIDE_MODE*/
+	0x2080,							/* Voice Recognition*/
+	0x3090, 0x30A0, 0x30B0,			/* Sound Record for recorder Voice Record for camera*/
+	0x40C0,							/* Music Speaker*/
+	0x50D0,							/* interview_record specially for WeChat*/
+	0x6000,							/* Barge-in*/
+	0x70E0, 0x70F0, 0x7100,			/* Karaoke*/
+	0x8111, 0x8121, 0x8131			/* Karaoke_SPK*/
 };
 #else
 static const u16 ram_table[] = {
@@ -1931,6 +1965,7 @@ static const u16 ram_table[] = {
 	0x70D0, 0x70E0, 0x70F0,	// Karaoke
 	0x8101, 0x8111, 0x8121	// Karaoke_SPK
 };
+#endif
 #endif
 
 static const struct soc_enum dsp_mode_enum[] = {
@@ -2151,6 +2186,9 @@ static int ak4961_set_dsp_mode(struct snd_kcontrol *kcontrol,
 			break;
 		case DSP_MODE_WIDE_HANDSET:
 		case DSP_MODE_WIDE_HEADSET:
+#ifdef AKM_VOICE_CALL
+		case DSP_MODE_WIDE_HEADPHONE:
+#endif
 		case DSP_MODE_WIDE_HANDSFREE:
 			snd_soc_write(codec, DSP_SETTING1, 0x68);
 			snd_soc_write(codec, DSP_SETTING2, 0x3C);

@@ -52,6 +52,7 @@ DEFINE_EVENT(mmc_blk_erase_class, mmc_blk_erase_end,
 	TP_PROTO(unsigned int cmd, unsigned int addr, unsigned int size),
 	TP_ARGS(cmd, addr, size));
 
+#ifdef CONFIG_TASK_IO_ACCOUNTING
 /*
  * Log process io events
  */
@@ -84,6 +85,7 @@ TRACE_EVENT(mmc_pid_blk_write_summary,
 	TP_printk("process [%u] do write io %llu bytes",
 		  __entry->pid, __entry->io_write_bytes)
 );
+#endif
 
 DECLARE_EVENT_CLASS(mmc_blk_rw_summary_class,
 	TP_PROTO(unsigned long rb, s64 rt, unsigned long wb, s64 wt),

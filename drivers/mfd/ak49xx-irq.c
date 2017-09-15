@@ -35,7 +35,6 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 
-
 #define BYTE_BIT_MASK(nr)		(1UL << ((nr) % BITS_PER_BYTE))
 #define BIT_BYTE(nr)			((nr) / BITS_PER_BYTE)
 #define AK49XX_SYSTEM_RESUME_TIMEOUT_MS 100
@@ -48,7 +47,7 @@
 struct ak49xx_irq_drv_data {
 	struct irq_domain *domain;
 	int irq;
- // ZTE_chenjun
+	/* ZTE_chenjun */
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *cdc_int_cfg;
 	int es804_rst_gpio;
@@ -56,7 +55,7 @@ struct ak49xx_irq_drv_data {
 };
 #endif
 
- // ZTE_chenjun
+/* ZTE_chenjun */
 #if 0
 extern int msm_tlmm_gp_info_get_ext(uint pin_no, unsigned int *func, unsigned int *out, unsigned int *value);
 #endif
@@ -69,7 +68,7 @@ struct ak49xx_irq {
 };
 
 static struct ak49xx_irq ak49xx_irqs[AK4961_NUM_IRQS] = {
-//	[0] = { .level = 1},
+	/* [0] = { .level = 1}, */
 /* All other ak49xx interrupts are edge triggered */
 };
 
@@ -151,11 +150,11 @@ bool ak49xx_lock_sleep(
 		pr_warn("%s: system didn't resume within %dms, s %d\n",
 			__func__,
 			AK49XX_SYSTEM_RESUME_TIMEOUT_MS, ak49xx_res->pm_state);
-//		ak49xx_unlock_sleep(ak49xx_res);
+	/* ak49xx_unlock_sleep(ak49xx_res); */
 		wake_up_all(&ak49xx_res->pm_wq);
 		return false;
 	}
-//	wake_up_all(&ak49xx_res->pm_wq);
+	/* wake_up_all(&ak49xx_res->pm_wq); */
 	return true;
 }
 EXPORT_SYMBOL(ak49xx_lock_sleep);
@@ -168,13 +167,12 @@ void ak49xx_unlock_sleep(
 	if (--ak49xx_res->wlock_holders == 0) {
 		pr_debug("%s: releasing wake lock pm_state %d -> %d\n",
 			 __func__, ak49xx_res->pm_state, AK49XX_PM_SLEEPABLE);
-
 		 */
 		if (likely(ak49xx_res->pm_state == AK49XX_PM_AWAKE))
 			ak49xx_res->pm_state = AK49XX_PM_SLEEPABLE;
-//		pm_qos_update_request(&ak49xx_res->pm_qos_req,
-//				PM_QOS_DEFAULT_VALUE);
-//	}
+	/* pm_qos_update_request(&ak49xx_res->pm_qos_req,
+			PM_QOS_DEFAULT_VALUE);
+	} */
 	mutex_unlock(&ak49xx_res->pm_lock);
 	wake_up_all(&ak49xx_res->pm_wq);
 }
@@ -205,26 +203,22 @@ static irqreturn_t ak49xx_irq_thread(int irq, void *data)
 	int i;
 
 	if (unlikely(ak49xx_lock_sleep(ak49xx_res) == false)) {
-// ZTE_chenjun
+/* ZTE_chenjun */
  #if 0
 		unsigned int func, out, value;
 		struct ak49xx_irq_drv_data *data;
 
 #define CODEC_INT_GPIO 72
-
 	data = ak49xx_get_irq_drv_d(ak49xx_res);
 	if (!data) {
 		pr_warn("%s: not registered to interrupt controller\n",
 			__func__);
 	} else {
 		msm_tlmm_gp_info_get_ext(CODEC_INT_GPIO, &func, &out, &value);
-		if ((func != 0) || (out != 0))
-		{
+		if ((func != 0) || (out != 0)) {
 		    pr_err("%s:cdc int gpio err:func(%#X), out(%#X), value(%#X)\n", __func__, func, out, value);
 		    if (data->pinctrl) {
-		        ret = pinctrl_select_state(data->pinctrl,
-                                                           data->cdc_int_cfg);
-
+			ret = pinctrl_select_state(data->pinctrl, data->cdc_int_cfg);
 		        if (ret) {
 		            pr_err("%s(): error set cdc_int_cfg", __func__);
 		        } else {
@@ -235,18 +229,13 @@ static irqreturn_t ak49xx_irq_thread(int irq, void *data)
        }
 #endif
 
-		//ret=ak49xx_res->codec_reg_write(ak49xx_res,DETECTION_EVENT_RESET, 0x01);
+		/* ret = ak49xx_res->codec_reg_write(ak49xx_res,DETECTION_EVENT_RESET, 0x01); */
 		ret=ak49xx_res->codec_reg_read(ak49xx_res, JACK_DETECTION_EVENT);
-		if(ret<0)
-			{
+		if (ret < 0) {
 			pr_err("[LHS] %s , line%d , spi not ready !\n",__func__,__LINE__);
-			}
-		else
-			{
+		} else {
 			pr_err("[LHS] %s , line%d , spi is ready, JDS=%x!\n",__func__,__LINE__,ret);
 			}
-
-//
 
 		dev_err(ak49xx_res->dev, "Failed to hold suspend\n");
 		return IRQ_NONE;
@@ -254,7 +243,7 @@ static irqreturn_t ak49xx_irq_thread(int irq, void *data)
 
 	ret = ak49xx_res->codec_reg_read(ak49xx_res, JACK_DETECTION_EVENT);
 	if (ret < 0) {
-		// ak49xx_res->codec_reg_write(ak49xx_res,DETECTION_EVENT_RESET, 0x01); // ZTE_chenjun
+		/* ak49xx_res->codec_reg_write(ak49xx_res,DETECTION_EVENT_RESET, 0x01); ZTE_chenjun */
 		dev_err(ak49xx_res->dev, "[LHS]Failed to read interrupt status: %d\n", ret);
 		ak49xx_unlock_sleep(ak49xx_res);
 		return IRQ_NONE;
@@ -262,15 +251,13 @@ static irqreturn_t ak49xx_irq_thread(int irq, void *data)
 		status[0] = ret;
 	}
 
-// ZTE_chenjun
-	if(ret==0)
-	{
+/* ZTE_chenjun */
+	if (ret == 0) {
 	    ak49xx_res->codec_reg_write(ak49xx_res,DETECTION_EVENT_RESET, 0x01);
 	    pr_err("[LHS] %s , line%d , no JDE at all !\n",__func__,__LINE__);
 	    ak49xx_unlock_sleep(ak49xx_res);
 	    return IRQ_NONE;
 	}
-//
 
 	/* Apply masking */
 	for (i = 0; i < AK49XX_NUM_IRQ_REGS; i++)
@@ -302,14 +289,17 @@ void ak49xx_free_irq(struct ak49xx_core_resource *ak49xx_res,
 {
 	free_irq(phyirq_to_virq(ak49xx_res, irq), data);
 }
+
 void ak49xx_enable_irq(struct ak49xx_core_resource *ak49xx_res, int irq)
 {
 	enable_irq(phyirq_to_virq(ak49xx_res, irq));
 }
+
 void ak49xx_disable_irq(struct ak49xx_core_resource *ak49xx_res, int irq)
 {
 	disable_irq_nosync(phyirq_to_virq(ak49xx_res, irq));
 }
+
 void ak49xx_disable_irq_sync(struct ak49xx_core_resource *ak49xx_res, int irq)
 {
 	disable_irq(phyirq_to_virq(ak49xx_res, irq));
@@ -513,8 +503,7 @@ static int phyirq_to_virq(struct ak49xx_core_resource *ak49xx_res, int offset)
 
 	data = ak49xx_get_irq_drv_d(ak49xx_res);
 	if (!data) {
-		pr_warn("%s: not registered to interrupt controller\n",
-			__func__);
+		pr_warn("%s: not registered to interrupt controller\n", __func__);
 		return -EINVAL;
 	}
 	return irq_linear_revmap(data->domain, offset);
@@ -560,8 +549,7 @@ static int ak49xx_map_irq(struct ak49xx_core_resource *ak49xx_res, int irq)
 {
 	return of_irq_to_resource(ak49xx_res->dev->of_node, irq, NULL);
 }
-
-// ZTE_chenjun
+/* ZTE_chenjun */
 static void ak49xx_irq_get_pinctrl_configs(struct device *dev, struct ak49xx_irq_drv_data *data)
 {
 	struct pinctrl_state *set_state;
@@ -572,8 +560,7 @@ static void ak49xx_irq_get_pinctrl_configs(struct device *dev, struct ak49xx_irq
 	} else {
 		pr_err("%s(): Using Pinctrl", __func__);
 
-		set_state = pinctrl_lookup_state(data->pinctrl,
-						"cdc_int_cfg");
+		set_state = pinctrl_lookup_state(data->pinctrl, "cdc_int_cfg");
 		if (IS_ERR_OR_NULL(set_state)) {
 			pr_err("pinctrl lookup failed for cdc_int_cfg");
 			goto pinctrl_fail;
@@ -585,12 +572,13 @@ static void ak49xx_irq_get_pinctrl_configs(struct device *dev, struct ak49xx_irq
 
 		return;
 	}
+
 pinctrl_fail:
 	data->pinctrl = NULL;
 	return;
 }
 
-// ZTE_chenjun
+/* ZTE_chenjun */
 #if 0
 static int ak49xx_irq_probe(struct platform_device *pdev)
 {
@@ -601,8 +589,7 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
 
 	irq = platform_get_irq_byname(pdev, "cdc-int");
 	if (irq < 0) {
-		dev_err(&pdev->dev, "%s: Couldn't find cdc-int node(%d)\n",
-			__func__, irq);
+		dev_err(&pdev->dev, "%s: Couldn't find cdc-int node(%d)\n", __func__, irq);
 		return -EINVAL;
 	} else {
 		dev_dbg(&pdev->dev, "%s: virq = %d\n", __func__, irq);
@@ -613,9 +600,7 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
 		}
 		data = (struct ak49xx_irq_drv_data *)domain->host_data;
 		data->irq = irq;
-// ZTE_chenjun
 		ak49xx_irq_get_pinctrl_configs(&pdev->dev, data);
-
 		wmb();
 		ret = 0;
 	}
@@ -623,7 +608,7 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
 	return ret;
 }
 #else
-// ZTE_chenjun: for MSM8996-M
+/* ZTE_chenjun: for MSM8996-M */
 static int ak49xx_irq_probe(struct platform_device *pdev)
 {
 	int irq;
@@ -632,7 +617,7 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	int ret = -EINVAL;
 
-	pr_err("chenjun:%s: Enter", __func__);
+	pr_err("%s: Enter", __func__);
 
 	irq = of_get_named_gpio(node, "qcom,gpio-connect", 0);
 	if (!gpio_is_valid(irq)) {
@@ -652,7 +637,6 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
 		}
 		data = (struct ak49xx_irq_drv_data *)domain->host_data;
 		data->irq = irq;
-// ZTE_chenjun
 #if 0
         data->es804_rst_gpio= of_get_named_gpio(pdev->dev.of_node,
 				"es804,cdc-reset-gpio", 0);
@@ -663,7 +647,7 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
 			data->es804_rst_gpio);
 	}
 #endif
-
+#if 0
 	data->es804_ldo_gpio= of_get_named_gpio(pdev->dev.of_node,
 				"es804,cdc-ldo-gpio", 0);
 	pr_err("%s data->es804_ldo_gpio : %d\n",__func__,data->es804_ldo_gpio);
@@ -672,20 +656,15 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
 			"es804,cdc-ldo-gpio", pdev->dev.of_node->full_name,
 			data->es804_ldo_gpio);
 	}
+#endif
 
-//
-
-// ZTE_chenjun
 		ak49xx_irq_get_pinctrl_configs(&pdev->dev, data);
 
-// ZTE_chenjun
 #if 0
 	if (data->es804_rst_gpio > 0) {
 		ret = gpio_request(data->es804_rst_gpio, "ES804_RST");
 		if (ret) {
-			pr_err("%s: Failed to request gpio %d\n", __func__,
-				data->es804_rst_gpio);
-			// data->es804_rst_gpio = 0;
+				pr_err("%s: Failed to request gpio %d\n", __func__, data->es804_rst_gpio);
 			}
 		}
 	if (data->es804_rst_gpio > 0) {
@@ -695,12 +674,11 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
 		}
 #endif
 
+#if 0
 	if (data->es804_ldo_gpio > 0) {
 		ret = gpio_request(data->es804_ldo_gpio, "ES804_LDO");
 		if (ret) {
-			pr_err("%s: Failed to request gpio %d\n", __func__,
-				data->es804_ldo_gpio);
-			// data->es804_ldo_gpio = 0;
+				pr_err("%s: Failed to request gpio %d\n", __func__, data->es804_ldo_gpio);
 			}
 		}
 	if (data->es804_ldo_gpio > 0) {
@@ -708,7 +686,8 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
           pr_err("%s(): 2: es804_ldo_gpio(%d) value(%d)",
                          __func__, data->es804_ldo_gpio, gpio_get_value_cansleep(data->es804_ldo_gpio));
 		}
-//
+#endif
+
 		wmb();
 		ret = 0;
 	}
@@ -716,7 +695,6 @@ static int ak49xx_irq_probe(struct platform_device *pdev)
 	return ret;
 }
 #endif
-//
 
 static int ak49xx_irq_remove(struct platform_device *pdev)
 {

@@ -901,7 +901,7 @@
 		qcom,gpio-connect = <&tlmm 54 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&wcd_intr_default>;
-		es804,cdc-ldo-gpio = <&tlmm 16 0>;
+		/*es804,cdc-ldo-gpio = <&tlmm 16 0>;*/
 	};
 
 	clock_audio: audio_ext_clk {

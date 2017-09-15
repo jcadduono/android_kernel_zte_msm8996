@@ -364,6 +364,12 @@ config BOARD_FUJISAN
     help
       Support for ZTE MSM8996 FUJISAN device.
 
+config BOARD_CANDICE
+    depends on ARCH_MSM8996
+    bool "ZTE CANDICE"
+    help
+      Support for ZTE MSM8996 CANDICE device.
+
 endmenu
 
 menu "Bus support"

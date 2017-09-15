@@ -438,6 +438,10 @@ struct mdss_dsi_ctrl_pdata {
 	int lcd_3v_vsp_en_gpio;
 	int mode_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
+	/*zte,for acl and hbm  20161224 start */
+	int current_acl_level;
+	int current_hbm_level;
+	/*zte,for acl and hbm  20161224 end */
 	bool pwm_pmi;
 	int pwm_period;
 	int pwm_pmic_gpio;

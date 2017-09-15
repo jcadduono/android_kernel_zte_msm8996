@@ -195,6 +195,8 @@ static void set_dload_mode(int on)
 		pr_err("Failed to set secure DLOAD mode: %d\n", ret);
 
 	dload_mode_enabled = on;
+	/* zte add kernel log below */
+	pr_notice("zte_restart set_dload_mode %d, param=%d\n", dload_mode_enabled, on);
 }
 
 static bool get_dload_mode(void)
@@ -352,6 +354,9 @@ static void msm_restart_prepare(const char *cmd)
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (need_warm_reset) {
+	/* zte add reset type print to assist reset issue's analysis */
+		pr_notice("zte_restart flag %d, %d, %d\n",
+			in_panic, download_mode, restart_mode);
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	} else {
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
@@ -672,6 +677,15 @@ skip_sysfs_create:
 	if (scm_is_call_available(SCM_SVC_PWR, SCM_IO_DEASSERT_PS_HOLD) > 0)
 		scm_deassert_ps_hold_supported = true;
 
+#if defined(ZTE_RESTART_FLAG_USER_BUILD) /*may defined in the local makefile*/
+	download_mode = 0; /* reinit differing with default */
+#elif defined(ZTE_RESTART_FLAG_USERDEBUG_BUILD) || defined(ZTE_RESTART_FLAG_ENG_BUILD)
+	/* nothing need to do, the default is already 1 */
+#else
+	/* zte_should_defined_the_build_var_micro error_and_unexpected,
+		maybe to raise a compiling error next step,
+		here just use the default value as userdebug or eng build */
+#endif
 	set_dload_mode(download_mode);
 	if (!download_mode)
 		scm_disable_sdi();

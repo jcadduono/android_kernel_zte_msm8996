@@ -73,6 +73,10 @@ static int zte_amss_acount;
 static struct device  *msm_cpu_pm_dev;
 /*ZTE_PM ---- */
 
+static uint32_t showmodemsleep = 0;
+static uint32_t showmodemawake = 0;
+static uint32_t showmodemsleeporawake = 0;
+static uint32_t showphyslinktime = 0;
 
 #ifndef ZTE_GPIO_DEBUG
 #define ZTE_GPIO_DEBUG
@@ -529,6 +533,55 @@ unsigned pm_modem_awake_time_get(int *current_sleep)
 	pr_info("[PM] get modemawaketime %d,current_sleep=%d\n", zte_imem_ptr->modemawaketime, *current_sleep);
 	return zte_imem_ptr->modemawaketime;
 }
+
+static int pm_modem_sleep_time_show(char *buffer, struct kernel_param *kp)
+{
+	if (!zte_imem_ptr) {
+		pr_err("zte_imem_ptr is null,pm_modem_sleep_time_get return\n");
+		return 0;
+	}
+	pr_info("[PM] get modemsleeptime %d\n", zte_imem_ptr->modemsleeptime);
+	return  snprintf(buffer, 8,  "%d", (zte_imem_ptr->modemsleeptime / 1000));
+}
+
+static int pm_modem_awake_time_show(char *buffer, struct kernel_param *kp)
+{
+	if (!zte_imem_ptr) {
+		pr_err("zte_imem_ptr is null,modemawaketime return\n");
+		return 0;
+	}
+	pr_info("[PM] get modemawaketime %d\n", zte_imem_ptr->modemawaketime);
+	return  snprintf(buffer, 8, "%d", (zte_imem_ptr->modemawaketime / 1000));
+}
+static int pm_modem_sleep_or_awake_show(char *buffer, struct kernel_param *kp)
+{
+	if (!zte_imem_ptr) {
+		pr_err("zte_imem_ptr is null,pm_modem_sleep_or_awake_get return\n");
+		return 0;
+	}
+	pr_info("[PM] get modemsleep_or_awake %d,\n", zte_imem_ptr->modemsleep_or_awake);
+	return  snprintf(buffer, 8, "%d", zte_imem_ptr->modemsleep_or_awake);
+}
+
+static int pm_modem_phys_link_time_show(char *buffer, struct kernel_param *kp)
+{
+	if (!zte_imem_ptr) {
+		pr_err("zte_imem_ptr is null,pm_modem_phys_link_time_get return\n");
+		return 0;
+	}
+	pr_info("[PM] get physlinktime %d\n", zte_imem_ptr->physlinktime);
+	return  snprintf(buffer, 8, "%d", zte_imem_ptr->physlinktime);
+}
+
+
+module_param_call(showmodemsleep, NULL, pm_modem_sleep_time_show,
+						&showmodemsleep, 0644);
+module_param_call(showmodemawake, NULL, pm_modem_awake_time_show,
+						&showmodemawake, 0644);
+module_param_call(showmodemsleeporawake, NULL, pm_modem_sleep_or_awake_show,
+						&showmodemsleeporawake, 0644);
+module_param_call(showphyslinktime, NULL, pm_modem_phys_link_time_show,
+						&showphyslinktime, 0644);
 
 
 /*ZTE_PM ++++ */

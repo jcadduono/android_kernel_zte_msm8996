@@ -1,6 +1,7 @@
 dtb-$(CONFIG_ARCH_MSM8996) += zte-msm8996-v3-pmi8996-ailsa_ii.dtb \
 	zte-msm8996-v3-pmi8996-bravo.dtb \
-	zte-msm8996-v3-pmi8996-fujisan.dtb
+	zte-msm8996-v3-pmi8996-fujisan.dtb \
+	zte-msm8996-v3-pmi8996-candice.dtb
 
 dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-sim.dtb \
 	msmcobalt-rumi.dtb \

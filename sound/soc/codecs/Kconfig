@@ -318,6 +318,9 @@ config SND_SOC_AK4671
 config SND_SOC_AK4961
 	tristate
 
+config SND_SOC_AK4962
+	tristate
+
 config SND_SOC_AK5386
 	tristate "AKM AK5638 CODEC"
 
@@ -636,6 +639,9 @@ config SND_SOC_WCD9330
 config SND_SOC_WCD9335
         tristate
 
+config ZTE_NXP_SMART_PA
+    bool "zte add NXP smart pa chip tfa9888"
+
 config SND_SOC_WSA881X_SENSORS
 	tristate
 
@@ -667,7 +673,7 @@ config SND_SOC_WCD_CPE
 
 config AUDIO_EXT_CLK
 	tristate
-	default y if SND_SOC_AK4961=y
+	default y if SND_SOC_AK4961=y || SND_SOC_AK4962=y
 	default y if SND_SOC_WCD9335=y || SND_SOC_WCD9330=y || SND_SOC_MSM8X16_WCD=y
 
 config SND_SOC_WCD_MBHC

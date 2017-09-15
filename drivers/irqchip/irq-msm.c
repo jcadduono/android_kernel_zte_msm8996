@@ -15,6 +15,8 @@
 #include <linux/irqchip/msm-mpm-irq.h>
 #if defined(CONFIG_AK4961_CODEC)
 #include <linux/mfd/ak49xx/core.h>
+#elif defined(CONFIG_AK4962_CODEC)
+#include <linux/mfd/ak49xx/core.h>
 #else
 #include <linux/mfd/wcd9xxx/core.h>
 #endif
@@ -68,6 +70,8 @@ IRQCHIP_DECLARE(californium_pinctrl, "qcom,mdmcalifornium-pinctrl",
 IRQCHIP_DECLARE(9607_pinctrl, "qcom,mdm9607-pinctrl", pinctrl_irq_dummy);
 IRQCHIP_DECLARE(qpnp_irq, "qcom,spmi-pmic-arb", qpnpint_of_init);
 #if defined(CONFIG_AK4961_CODEC)
+IRQCHIP_DECLARE(ak49xx_irq, "akm,ak49xx-irq", ak49xx_irq_of_init);
+#elif defined(CONFIG_AK4962_CODEC)
 IRQCHIP_DECLARE(ak49xx_irq, "akm,ak49xx-irq", ak49xx_irq_of_init);
 #else
 IRQCHIP_DECLARE(wcd9xxx_irq, "qcom,wcd9xxx-irq", wcd9xxx_irq_of_init);

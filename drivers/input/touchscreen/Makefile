@@ -92,4 +92,6 @@ obj-$(CONFIG_TOUCHSCREEN_MSTAR21XX)	+= msg21xx_ts.o
 #obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE) 	+= synaptics_fw_update.o
 obj-$(CONFIG_TOUCHSCREEN_GT9XX)		+= gt9xx/
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX) += synaptics_dsx_zte/
+obj-$(CONFIG_TOUCHSCREEN_NT11207) += novatek_touch/
+obj-$(CONFIG_TOUCHSCREEN_NT11207_2ND) += novatek_touch_2nd/
 obj-$(CONFIG_FORCE_TOUCH_NDT) += ndt_stress.o

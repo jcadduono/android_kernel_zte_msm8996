@@ -15,6 +15,7 @@
 #define __MFD_AK49XX_PDATA_H__
 
 #include <linux/slimbus/slimbus.h>
+#include <linux/pinctrl/consumer.h>
 
 #define MICBIAS_EXT_BYP_CAP 0x00
 #define MICBIAS_NO_EXT_BYP_CAP 0x01
@@ -65,6 +66,9 @@ struct ak49xx_pdata {
 	struct pinctrl_state *gpio_state_active;
 	struct pinctrl_state *gpio_state_suspend;
 	struct pinctrl_state *smartpa_rst_normal; // ZTE_chenjun
+	int pa_spk_rst_gpio; /*for smartPA*/
+	int pa_rcv_rst_gpio; /*for smartPA*/
+	int pa_rst_gpio;
 	struct slim_device slimbus_slave_device;
 	struct ak49xx_micbias_setting micbias;
 	struct ak49xx_regulator regulator[AK49XX_MAX_REGULATOR];

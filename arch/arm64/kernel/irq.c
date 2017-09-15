@@ -28,11 +28,22 @@
 #include <linux/irqchip.h>
 #include <linux/seq_file.h>
 #include <linux/ratelimit.h>
+#include <linux/timer.h>
+#include <linux/module.h>
 
 unsigned long irq_err_count;
 
 /*ZTE ++++*/
 int zte_smd_wakeup = 0;
+int zte_smd_qmi_wakeup = 0;
+static void qmi_wakeup_clear_timer_func(unsigned long dummy);
+static DEFINE_TIMER(qmi_wakeup_clear, qmi_wakeup_clear_timer_func, 0, 0);
+
+static void qmi_wakeup_clear_timer_func(unsigned long dummy)
+{
+	zte_smd_qmi_wakeup = 0;
+}
+
 void print_irq_info(int i)
 {
 	struct irqaction *action;
@@ -52,8 +63,11 @@ void print_irq_info(int i)
 
 		/*notes:adb shell cat /proc/interrupts | grep smd*/
 		/*note: zte change smd-dev to smd-modem 20150304*/
-		if (!strcmp(action->name, "qcom,smd-modem"))
+		if (!strcmp(action->name, "qcom,smd-modem")) {
 			zte_smd_wakeup = 1;
+			zte_smd_qmi_wakeup = 1;
+			mod_timer(&qmi_wakeup_clear, jiffies + msecs_to_jiffies(50));
+		}
 
 		for (action = action->next; action; action = action->next)
 			pr_err("	action->name=%s\n", action->name);

@@ -16,6 +16,7 @@
 #include <linux/types.h>
 #include <linux/platform_device.h>
 #include <linux/of_irq.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/mfd/ak49xx/core-resource.h>
 
 #define AK49XX_SLIM_STATUS_REG 4
@@ -68,12 +69,18 @@ struct ak49xx {
 	int smartpa_rst2_gpio; // ZTE_chenjun
        int ldoen_gpio;
 	int cif1_gpio;
+
 	int cs_gpio;
+	bool use_pinctrl;
 	bool ldo_use_pinctrl;
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *gpio_state_active;
 	struct pinctrl_state *gpio_state_suspend;
 	struct pinctrl_state *smartpa_rst_normal; // ZTE_chenjun
+	int pa_spk_rst_gpio;
+	int pa_rcv_rst_gpio;
+	int pa_rst_gpio;
+
 	int (*read_dev)(struct ak49xx *ak49xx, unsigned short reg,
 			int bytes, void *dest, bool interface_reg);
 	int (*write_dev)(struct ak49xx *ak49xx, unsigned short reg,
@@ -95,7 +102,7 @@ struct ak49xx {
 	struct ak49xx_ch *rx_chs;
 	struct ak49xx_ch *tx_chs;
 	u32 mclk_rate;
-	u16 use_pinctrl;
+	/*u16 use_pinctrl;*/
 
 	u8 codec_id;
 };
@@ -111,7 +118,9 @@ int ak49xx_run_ram_write(struct ak49xx *ak49xx, u8 *buf);
 
 void ak49xx_slimbus_interfacereg_setup(struct ak49xx *ak49xx);
 int ak49xx_power_test(struct ak49xx *ak49xx,int val);
-
+#ifdef CONFIG_AK4962_CODEC
+int ak49xx_cram_read(unsigned short reg, int bytes, void *dest);
+#endif
 
 #if defined(CONFIG_AK4960_CODEC) || \
 	defined(CONFIG_AK4961_CODEC) || \

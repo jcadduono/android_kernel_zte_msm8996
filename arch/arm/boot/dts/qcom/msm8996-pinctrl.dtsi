@@ -450,6 +450,50 @@
 			};
 		};
 
+		/* GPIO_39 : FP_RESET_N */
+		msm_gpio_39: msm_gpio_39 {
+			mux {
+				 pins = "gpio39";
+				 function = "gpio";
+			};
+
+			config {
+				pins = "gpio39";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+
+		/* GPIO_39 : FP_RESET_N, state device active*/
+		msm_gpio_39_output_high: msm_gpio_39_output_high {
+			mux {
+				pins = "gpio39";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio39";
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+
+		/* GPIO_123 : FP_INT_N */
+		msm_gpio_123: msm_gpio_123 {
+			mux {
+				pins = "gpio123";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio123";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
 		zte_hall: zte_hall {
 			zte_hall_gpio_active: zte_hall_gpio_active {
 				mux {
@@ -465,6 +509,21 @@
 				};
 			};
 		};
+
+		/*mxm1120_int_pin {
+			mxm1120_int1_default: int_default {
+				mux {
+					pins = "gpio124";
+					function = "gpio";
+				};
+				config {
+					pins = "gpio124";
+					num-grp-pins = <1>;
+					drive-strength = <6>;
+					bias-pull-up;
+				};
+			};
+		};*/
 
 		gp_switch_active: gp_switch_active {
 			gp_switch_active {
@@ -674,6 +733,34 @@
 				};
 			};
 		};
+		ts_mux_2nd {
+			ts_active_2nd: ts_active_2nd {
+				mux {
+					pins = "gpio33", "gpio24";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio33", "gpio24";
+					drive-strength = <16>;
+					bias-pull-up;
+				};
+			};
+
+			ts_suspend_2nd: ts_suspend_2nd {
+				mux {
+					pins = "gpio33", "gpio24";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio33", "gpio24";
+					drive-strength = <2>;
+					bias-disable;
+				};
+			};
+		};
+
 
 		/*ergate*/
 		ndt_mux{
@@ -781,6 +868,35 @@
 				};
 			};
 		};
+
+		i2c_11 {
+			i2c_11_active: i2c_11_active {
+				mux {
+					pins = "gpio60", "gpio61";
+					function = "blsp_i2c11";
+				};
+
+				config {
+					pins = "gpio60", "gpio61";
+					drive-strength = <2>;
+					bias-disable;
+				};
+			};
+
+			i2c_11_sleep: i2c_11_sleep {
+				mux {
+					pins = "gpio60", "gpio61";
+					function = "blsp_i2c11";
+				};
+
+				config {
+					pins = "gpio60", "gpio61";
+					drive-strength = <2>;
+					bias-pull-down;
+				};
+			};
+		};
+
 		i2c_12 {
                         i2c_12_active: i2c_12_active {
 				mux {
@@ -1287,12 +1403,12 @@
 		pcie1 {
 			pcie1_clkreq_default: pcie1_clkreq_default {
 				mux {
-					pins = "gpio131";
+					/*pins = "gpio131";*/
 					function = "pci_e1";
 				};
 
 				config {
-					pins = "gpio131";
+					/*pins = "gpio131";*/
 					drive-strength = <2>;
 					bias-pull-up;
 				};

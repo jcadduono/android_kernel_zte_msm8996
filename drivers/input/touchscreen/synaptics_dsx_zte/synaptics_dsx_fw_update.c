@@ -47,7 +47,12 @@
 //#define FW_IMAGE_NAME "synaptics/startup_fw_update.img"
 /*fw for 3-layer*/
 #define FW_IMAGE_NAME_NO_KEY 	"synaptics/startup_fw_update_no_key.img"
+
+#ifndef ZTE_TS_FIRMWARE_UPDATE_IMPROVE
 #define FW_IMAGE_NAME_KEY 	"synaptics/startup_fw_update_key.img"
+#else
+#define FW_IMAGE_NAME_KEY      "synaptics/startup_fw_update_key_improve.img"
+#endif
 
 #define DO_STARTUP_FW_UPDATE
 #ifdef DO_STARTUP_FW_UPDATE

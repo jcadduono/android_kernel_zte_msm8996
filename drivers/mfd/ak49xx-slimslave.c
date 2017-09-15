@@ -32,7 +32,8 @@ static int ak49xx_configure_ports(struct ak49xx *ak49xx)
 {
 
 	if ((ak49xx->codec_id == CODEC_AK4960_ID) ||
-		(ak49xx->codec_id == CODEC_AK4961_ID)) {
+		(ak49xx->codec_id == CODEC_AK4961_ID) ||
+		(ak49xx->codec_id == CODEC_AK4962_ID)) {
 		sh_ch.rx_port_ch_reg_base = 0x180;
 		sh_ch.port_rx_cfg_reg_base = 0x040;
 		sh_ch.port_tx_cfg_reg_base = 0x040;

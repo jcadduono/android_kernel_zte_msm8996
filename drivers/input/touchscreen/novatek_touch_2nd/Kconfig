@@ -1,0 +1,29 @@
+#
+# Novatek NT11207 touchscreen driver configuration
+#
+menuconfig TOUCHSCREEN_NT11207_2ND
+	bool "Novatek NT11207"
+	help
+	  Say Y here if you have a Novatek NT11207 touchscreen connected
+	  to your system.
+
+	  If unsure, say N.
+
+if TOUCHSCREEN_NT11207_2ND
+
+choice
+	default TOUCHSCREEN_NT11207_EBBG_FIH_1080_1920
+	prompt "Novatek NT11207 Panels"
+
+config TOUCHSCREEN_NT11207_EBBG_FIH_1080_1920
+	bool "NT11207_EBBG_FIH_1080_1920"
+	depends on I2C
+	help
+	  Say Y here if you have a Novatek NT11207 Panel
+	  to the host processor over I2C
+
+	  If unsure, say N.
+
+endchoice
+
+endif

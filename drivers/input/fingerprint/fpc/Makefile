@@ -15,4 +15,4 @@
 # export KERNELDIR=[path to kernel source]
 # -----------------------------------------------------------------------------
 # called from kernel build system: just declare what our modules are
-obj-$(CONFIG_INPUT_FPC) := fpc1020_tee.o
+obj-$(CONFIG_FINGERPRINT_FPC) := fpc1020_tee.o

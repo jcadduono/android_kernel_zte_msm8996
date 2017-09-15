@@ -1084,6 +1084,9 @@ fb_blank_oem(struct fb_info *info, int blank)
 	if (blank > FB_BLANK_POWERDOWN)
 		blank = FB_BLANK_POWERDOWN;
 
+#ifdef CONFIG_BOARD_FUJISAN
+	if (info->node == 0) {
+#endif
 	if (lcd_status == blank){
 		pr_info("DBG fb_blank_oem, already ok, lcd_status=%d, blank=%d, skip..\n", lcd_status, blank);
 		return 0;
@@ -1091,6 +1094,9 @@ fb_blank_oem(struct fb_info *info, int blank)
 		pr_info("DBG fb_blank_oem, lcd_status=%d, blank=%d, Start\n", lcd_status, blank);
 		lcd_status = blank;
 	}
+#ifdef CONFIG_BOARD_FUJISAN
+	}
+#endif
 
 	event.info = info;
 	event.data = &blank;
@@ -1211,6 +1217,9 @@ fb_blank(struct fb_info *info, int blank)
 	}
        //20160402-fix: save the lcd status from uplayer
 	lcd_status_uplayer = blank;
+#ifdef CONFIG_BOARD_FUJISAN
+	if (info->node == 0) {
+#endif
 	if (lcd_status == blank){
 		pr_info("DBG fb_blank, already ok, lcd_status=%d, blank=%d, fb_blank skip..\n", lcd_status,blank);
 		mutex_unlock(&fb_blank_async_mutex);
@@ -1219,6 +1228,9 @@ fb_blank(struct fb_info *info, int blank)
 		pr_info("DBG fb_blank, lcd_status=%d, blank=%d, Start\n", lcd_status,blank);
 		lcd_status = blank;
 	}
+#ifdef CONFIG_BOARD_FUJISAN
+	}
+#endif
 #endif
 
  	if (blank > FB_BLANK_POWERDOWN)

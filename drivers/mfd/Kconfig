@@ -1368,6 +1368,19 @@ config AK4961_CODEC
 	  The AK4961 codec support either SPI/I2S or Slimbus for
 	  control and data exchnage with master processor.
 
+config AK4962_CODEC
+	tristate "AK4962 Codec"
+	select SLIMBUS
+	select MFD_CORE
+	select SND_SOC_AK4962
+	default n
+	help
+	  Enables the AK49XX codec core driver. The core driver provides
+	  read/write capability to registers which are part of the
+	  AK4962 core and gives the ability to use the AK4962 codec.
+	  The AK4962 codec support either SPI/I2S or Slimbus for
+	  control and data exchnage with master processor.
+
 config WCD9330_CODEC
 	tristate "WCD9330 Codec"
 	select SLIMBUS

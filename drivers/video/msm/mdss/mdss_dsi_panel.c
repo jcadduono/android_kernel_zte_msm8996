@@ -128,10 +128,7 @@ static void mdss_dsi_panel_bklt_hbm(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	cmdreq.cb = NULL;
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
-
 }
-
-
 
 int mdss_dsi_panel_acl(struct mdss_panel_data *pdata, int level)
 {
@@ -173,7 +170,6 @@ int mdss_dsi_panel_acl(struct mdss_panel_data *pdata, int level)
 			mdss_dsi_panel_bklt_acl(sctrl, level);
 		}
 	}
-
 
 	pr_info("%s:-\n", __func__);
 	return 0;
@@ -236,7 +232,6 @@ int mdss_dsi_panel_hbm(struct mdss_panel_data *pdata, int level)
 		}
 	}
 
-
 	pr_info("%s:-\n", __func__);
 	return 0;
 }
@@ -245,7 +240,6 @@ struct mdss_dsi_ctrl_pdata *g_ctrl_pdata;
 
 static int panel_acl_proc_show(struct seq_file *m, void *v)
 {
-
 	seq_printf(m, "%d\n", g_ctrl_pdata->current_acl_level);
 
 	return 0;
@@ -255,8 +249,6 @@ static int panel_acl_proc_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, panel_acl_proc_show, NULL);
 }
-
-
 
 static ssize_t panel_acl_proc_write(struct file *file, const char __user *buffer,
 				    size_t count, loff_t *pos)
@@ -268,7 +260,6 @@ static ssize_t panel_acl_proc_write(struct file *file, const char __user *buffer
 	if (rc)
 		return rc;
 
-
 	g_ctrl_pdata->current_acl_level = ret;
 
 
@@ -278,7 +269,6 @@ static ssize_t panel_acl_proc_write(struct file *file, const char __user *buffer
 
 	return 1;
 }
-
 
 static const struct file_operations panel_acl_proc_fops = {
 	.open		= panel_acl_proc_open,
@@ -315,8 +305,6 @@ static int panel_hbm_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, panel_hbm_proc_show, NULL);
 }
 
-
-
 static ssize_t panel_hbm_proc_write(struct file *file, const char __user *buffer,
 				    size_t count, loff_t *pos)
 {
@@ -336,7 +324,6 @@ static ssize_t panel_hbm_proc_write(struct file *file, const char __user *buffer
 
 	return 1;
 }
-
 
 static const struct file_operations panel_hbm_proc_fops = {
 	.open		= panel_hbm_proc_open,
@@ -378,8 +365,6 @@ static int  samsung_panel_proc_init(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 end:
 	return ret;
 }
-
-
 #endif
 
 ssize_t mdss_dsi_panel_lcd_read_proc(struct file *file, char __user *page, size_t size, loff_t *ppos)
@@ -396,6 +381,7 @@ ssize_t mdss_dsi_panel_lcd_read_proc(struct file *file, char __user *page, size_
 
 	return len;
 }
+
 static const struct file_operations proc_ops = {
     .owner = THIS_MODULE,
     .read = mdss_dsi_panel_lcd_read_proc,
@@ -628,6 +614,11 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	struct dcs_cmd_req cmdreq;
 	struct mdss_panel_info *pinfo;
 	int bl_level;
+
+#ifdef CONFIG_BOARD_FUJISAN
+	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+#endif
+
 	pinfo = &(ctrl->panel_data.panel_info);
 
 	mutex_lock(&zte_display_lock);
@@ -656,6 +647,16 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 	led_pwm1[1] = (unsigned char)bl_level;
 
+#ifdef CONFIG_BOARD_FUJISAN
+	if (power_on_flag == 1) {
+		led_pwm2[1] = 0x24;
+		power_on_flag = 2;
+	} else if (power_on_flag == 2) {
+		led_pwm2[1] = 0x24;
+		power_on_flag = 0;
+	} else
+		led_pwm2[1] = 0x2c;
+#else
 	if (power_on_flag == 1) {
 		led_pwm2[1] = 0x20;
 		power_on_flag = 2;
@@ -664,7 +665,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 		power_on_flag=0;
 	} else
 		led_pwm2[1] = 0x28;
-
+#endif
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = backlight_cmd;
 	cmdreq.cmds_cnt = 4;
@@ -673,6 +674,21 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	cmdreq.cb = NULL;
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+
+#ifdef CONFIG_BOARD_FUJISAN
+	sctrl = mdss_dsi_get_other_ctrl(ctrl);
+	if (sctrl && (ctrl->ndx == DSI_CTRL_LEFT)) {
+		if (sctrl->panel_data.panel_info.panel_power_state != MDSS_PANEL_POWER_OFF) {
+			pr_info("LCD %s: for other ctrl ndx=%d level=%d -> new_level=%d\n",
+					__func__, sctrl->ndx, level, bl_level);
+			mdss_dsi_cmdlist_put(sctrl, &cmdreq);
+		} else {
+			pr_info("LCD %s: sctrl is power off, not need send cmds!\n", __func__);
+		}
+	} else {
+		pr_err("LCD %s: sctrl is NULL", __func__);
+	}
+#endif
 
 	mutex_unlock(&zte_display_lock);
 }
@@ -902,8 +918,7 @@ int mdss_dsi_read_R_AID_offset(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_cmd_
 
 	pinfo = &(ctrl->panel_data.panel_info);
 	if (pinfo->dcs_cmd_by_left) {
-		if (ctrl->ndx != DSI_CTRL_LEFT)
-		{
+		if (ctrl->ndx != DSI_CTRL_LEFT) {
 			//printk("jiangfeng %s, line %d, return!!!\n", __func__, __LINE__);
 			return -EINVAL;
 		}
@@ -923,20 +938,17 @@ int mdss_dsi_read_R_AID_offset(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_cmd_
 		return ret;
 
 #if 0
-	for(index = 0;index < len; index++)
-	{
+	for (index = 0;index < len; index++) {
 		printk("jiangfeng %s, line %d, index %d, value %d\n", __func__, __LINE__, index, rbuf[index]);
 	}
 #endif
 
-	for(index = 0;index < len; index++)
-	{
+	for (index = 0;index < len; index++) {
 		result[index] = rbuf[index] - offset[index];
 	}
 
 #if 0
-	for(index = 0;index < len; index++)
-	{
+	for (index = 0;index < len; index++) {
 		printk("jiangfeng %s, line %d, index %d, value %d\n", __func__, __LINE__, index, result[index]);
 	}
 #endif
@@ -978,8 +990,7 @@ static void mdss_dsi_enable_R_AID(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 		}
 	}
 
-	if(enable)
-	{
+	if (enable) {
 		memset(&cmdreq_config, 0, sizeof(cmdreq_config));
 		cmdreq_config.cmds_cnt = 7;
 		cmdreq_config.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
@@ -991,8 +1002,7 @@ static void mdss_dsi_enable_R_AID(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 		printk("jiangfeng %s, line %d, ret %d\n", __func__, __LINE__, ret);
 
 		//120nit
-		if(!inited_120)
-		{
+		if (!inited_120) {
 			memset(&cmdreq_read_offset_addr_120, 0, sizeof(cmdreq_read_offset_addr_120));
 			cmdreq_read_offset_addr_120.cmds_cnt = 2;
 			cmdreq_read_offset_addr_120.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
@@ -1003,8 +1013,7 @@ static void mdss_dsi_enable_R_AID(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 
 			mdss_dsi_read_R_AID_offset(ctrl,read_R_AID_offset_120_cmd, offset_120_default, offset_120, write_R_AID_offset_120 +1, 25);
 			inited_120 = 1;
-			if(ret)
-			{
+			if (ret) {
 				printk("jiangfeng %s, line %d, ret %d, return!!!\n", __func__, __LINE__, ret);
 				return;
 			}
@@ -1022,8 +1031,7 @@ static void mdss_dsi_enable_R_AID(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 
 		//90nit
 #if 1
-		if(!inited_90)
-		{
+		if (!inited_90) {
 			memset(&cmdreq_read_offset_addr_90, 0, sizeof(cmdreq_read_offset_addr_90));
 			cmdreq_read_offset_addr_90.cmds_cnt = 2;
 			cmdreq_read_offset_addr_90.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
@@ -1035,8 +1043,7 @@ static void mdss_dsi_enable_R_AID(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 
 			mdss_dsi_read_R_AID_offset(ctrl,read_R_AID_offset_90_cmd, offset_90_default, offset_90, write_R_AID_offset_90 + 1, 25);
 			inited_90 = 1;
-			if(ret)
-			{
+			if (ret) {
 				printk("jiangfeng %s, line %d, ret %d, return!!!\n", __func__, __LINE__, ret);
 				return;
 			}
@@ -1054,8 +1061,7 @@ static void mdss_dsi_enable_R_AID(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 #endif
 #if 0
 		//60nit
-		if(!inited_60)
-		{
+		if (!inited_60) {
 			mdss_dsi_read_R_AID_offset(ctrl,read_R_AID_offset_60_cmd, offset_60_default, offset_60, write_R_AID_offset_60 +1, 25);
 			inited_60 = 1;
 		}
@@ -1081,10 +1087,7 @@ static void mdss_dsi_enable_R_AID(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 		cmdreq_config_complete.cmds = R_AID_config_cmd_1;
 		ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq_config_complete);
 		printk("jiangfeng %s, line %d, ret %d\n", __func__, __LINE__, ret);
-
-	}
-	else if(ctrl->ctrl_state & CTRL_STATE_MDP_ACTIVE)
-	{
+	} else if (ctrl->ctrl_state & CTRL_STATE_MDP_ACTIVE) {
 		memset(&cmdreq_disable, 0, sizeof(cmdreq_disable));
 		cmdreq_disable.cmds_cnt = 7;
 		cmdreq_disable.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
@@ -1148,16 +1151,12 @@ static void mdss_dsi_enable_R_AID(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 		inited_90 = 0;
 		inited_60 = 0;
 #endif
-	}
-    else
-    {
+	} else {
         printk("jiangfeng %s, line %d, ret %d\n", __func__, __LINE__, ret);
     }
 
-
 	printk("jiangfeng %s, line %d, ret %d, enable %d\n", __func__, __LINE__, ret, enable);
 }
-
 
 int g_vr_mode=0;
 int g_vr_cnt=0;
@@ -1195,13 +1194,10 @@ static void zte_mdss_dsi_panel_enable_R_AID(struct mdss_panel_data *pdata, bool 
 			mdss_dsi_enable_R_AID(sctrl, enable);
 			}
 	}
-
 }
-
 
 static void mdss_dsi_panel_enable_R_AID(struct mdss_panel_data *pdata, bool enable)
 {
-
    struct dcs_cmd_req cmdreq_config;
    struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
@@ -1217,7 +1213,6 @@ static void mdss_dsi_panel_enable_R_AID(struct mdss_panel_data *pdata, bool enab
 	g_vr_cnt++;
 
     printk("zte_display +++++++++: %s, vrmode=%d g_vr_cnt=%d\n", __func__, enable,g_vr_cnt);
-
 
     memset(&cmdreq_config, 0, sizeof(cmdreq_config));
 	cmdreq_config.cmds_cnt = 1;
@@ -1270,9 +1265,7 @@ static void mdss_dsi_panel_enable_R_AID(struct mdss_panel_data *pdata, bool enab
 
 	 printk("zte_display ---------: %s, vrmode=%d\n", __func__, enable);
 	 mutex_unlock(&zte_display_lock);
-
 }
-
 
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -1287,12 +1280,28 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			goto disp_en_gpio_err;
 		}
 	}
+#ifdef CONFIG_BOARD_FUJISAN
+	if (ctrl_pdata->ndx == DSI_CTRL_LEFT) {
+		rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
+		if (rc) {
+			pr_err("%s: request reset gpio failed, rc=%d\n",
+				__func__, rc);
+			goto rst_gpio_err;
+		}
+	} else {
+		rc = gpio_request(ctrl_pdata->rst2_gpio, "disp_rst2_n");
+		if (rc) {
+			pr_err("%s: request reset2 gpio failed, rc=%d\n", __func__, rc);
+		}
+	}
+#else
 	rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
 	if (rc) {
 		pr_err("request reset gpio failed, rc=%d\n",
 			rc);
 		goto rst_gpio_err;
 	}
+#endif
 	if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 		rc = gpio_request(ctrl_pdata->bklt_en_gpio,
 						"bklt_enable");
@@ -1317,6 +1326,9 @@ mode_gpio_err:
 		gpio_free(ctrl_pdata->bklt_en_gpio);
 bklt_en_gpio_err:
 	gpio_free(ctrl_pdata->rst_gpio);
+#ifdef CONFIG_BOARD_FUJISAN
+	gpio_free(ctrl_pdata->rst2_gpio);
+#endif
 rst_gpio_err:
 	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 		gpio_free(ctrl_pdata->disp_en_gpio);
@@ -1377,6 +1389,45 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				}
 			}
 
+#ifdef CONFIG_BOARD_FUJISAN
+			if (ctrl_pdata->ndx == DSI_CTRL_LEFT) {
+				pr_info("%s: ndx=%d reset=%d seq!\n", __func__,
+						ctrl_pdata->ndx, ctrl_pdata->rst_gpio);
+				if (pdata->panel_info.rst_seq_len) {
+					rc = gpio_direction_output(ctrl_pdata->rst_gpio,
+					pdata->panel_info.rst_seq[0]);
+					if (rc) {
+						pr_err("%s: unable to set dir for rst gpio\n", __func__);
+						goto exit;
+					}
+				}
+
+				for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+					gpio_set_value((ctrl_pdata->rst_gpio),
+						pdata->panel_info.rst_seq[i]);
+					if (pdata->panel_info.rst_seq[++i])
+						usleep_range(pinfo->rst_seq[i] * 1000, pinfo->rst_seq[i] * 1000);
+				}
+			} else {
+				pr_info("%s: ndx=%d reset2=%d seq!\n", __func__,
+					ctrl_pdata->ndx, ctrl_pdata->rst2_gpio);
+				if (pdata->panel_info.rst_seq_len) {
+					rc = gpio_direction_output(ctrl_pdata->rst2_gpio,
+						pdata->panel_info.rst_seq[0]);
+					if (rc) {
+						pr_err("%s: unable to set dir for rst gpio\n", __func__);
+							goto exit;
+					}
+				}
+
+				for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+					gpio_set_value((ctrl_pdata->rst2_gpio),
+						pdata->panel_info.rst_seq[i]);
+					if (pdata->panel_info.rst_seq[++i])
+						usleep_range(pinfo->rst_seq[i] * 1000, pinfo->rst_seq[i] * 1000);
+				}
+			}
+#else
 			if (pdata->panel_info.rst_seq_len) {
 				rc = gpio_direction_output(ctrl_pdata->rst_gpio,
 					pdata->panel_info.rst_seq[0]);
@@ -1393,6 +1444,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				if (pdata->panel_info.rst_seq[++i])
 					usleep_range(pinfo->rst_seq[i] * 1000, pinfo->rst_seq[i] * 1000);
 			}
+#endif
 
 			if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 				rc = gpio_direction_output(
@@ -1435,8 +1487,20 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
+#ifdef CONFIG_BOARD_FUJISAN
+		if (ctrl_pdata->ndx == DSI_CTRL_LEFT) {
+			pr_info("%s: ndx=%d reset free!\n", __func__, ctrl_pdata->ndx);
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		gpio_free(ctrl_pdata->rst_gpio);
+		} else {
+			pr_info("%s: ndx=%d reset2 free!\n", __func__, ctrl_pdata->ndx);
+			gpio_set_value((ctrl_pdata->rst2_gpio), 0);
+			gpio_free(ctrl_pdata->rst2_gpio);
+		}
+#else
+		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		gpio_free(ctrl_pdata->rst_gpio);
+#endif
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
 	}
@@ -1646,6 +1710,9 @@ end:
 void mdss_dsi_panel_3v_power(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+#ifdef CONFIG_BOARD_FUJISAN
+	int retval = 0;
+#endif
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -1658,12 +1725,79 @@ void mdss_dsi_panel_3v_power(struct mdss_panel_data *pdata, int enable)
 	printk("LCD 3v_power GPIO(vsp):%d , Enable:%d\n",ctrl_pdata->lcd_3v_vsp_en_gpio, enable);
 
 	if (enable) {
+#ifdef CONFIG_BOARD_FUJISAN
+		if (ctrl_pdata->ndx == DSI_CTRL_LEFT) {
+			if (ctrl_pdata->lcd_2p8_reg) {
+				retval = regulator_enable(ctrl_pdata->lcd_2p8_reg);
+				if (retval < 0) {
+					pr_err("%s: lcd_2p8_reg regulator_enable failed\n", __func__);
+				} else {
+					pr_info("%s: lcd_2p8_reg regulator_enable successfully\n", __func__);
+				}
+			} else {
+				pr_err("%s: ctrl_pdata->lcd_2p8_reg not exist!\n", __func__);
+			}
+			msleep(5);
+		}
+
+		if (ctrl_pdata->ndx == DSI_CTRL_RIGHT) {
+			if (ctrl_pdata->lcd2_2p8_reg) {
+				retval = regulator_enable(ctrl_pdata->lcd2_2p8_reg);
+				if (retval < 0) {
+					pr_err("%s: lcd2_2p8_reg regulator_enable failed\n", __func__);
+				} else {
+					pr_info("%s: lcd2_2p8_reg regulator_enable successfully\n", __func__);
+				}
+			} else {
+				pr_err("%s: ctrl_pdata->lcd2_2p8_reg not exist!\n", __func__);
+			}
+			msleep(5);
+
+			if (gpio_is_valid(ctrl_pdata->lcd_5v_vsp_en_gpio)) {
+				pr_info("%s: enable lcd_5v_vsp_en_gpio\n", __func__);
+				gpio_direction_output((ctrl_pdata->lcd_5v_vsp_en_gpio), 1);
+			} else {
+				pr_err("%s:%d, lcd_5v_vsp_en_gpio not configured\n",
+					__func__, __LINE__);
+			}
+			msleep(2);
+
+			if (gpio_is_valid(ctrl_pdata->lcd_5v_vsn_en_gpio)) {
+				pr_info("%s: enable lcd_5v_vsn_en_gpio\n", __func__);
+				gpio_direction_output((ctrl_pdata->lcd_5v_vsn_en_gpio), 1);
+			} else {
+				pr_err("%s:%d, lcd_5v_vsn_en_gpio not configured\n",
+					__func__, __LINE__);
+			}
+			msleep(2);
+
+			if (ctrl_pdata->lcd2_5v_vsp_reg) {
+				retval = regulator_enable(ctrl_pdata->lcd2_5v_vsp_reg);
+				if (retval < 0) {
+					pr_err("%s: lcd2_5v_vsp_reg regulator_enable failed\n", __func__);
+				} else {
+					pr_info("%s: lcd2_5v_vsp_reg regulator_enable successfully\n", __func__);
+				}
+			} else {
+				pr_err("%s: ctrl_pdata->lcd2_5v_vsp_reg not exist!\n", __func__);
+			}
+
+			if (ctrl_pdata->lcd2_5v_vsn_reg) {
+				retval = regulator_enable(ctrl_pdata->lcd2_5v_vsn_reg);
+				if (retval < 0) {
+					pr_err("%s: lcd2_5v_vsn_reg regulator_enable failed\n", __func__);
+				} else {
+					pr_info("%s: lcd2_5v_vsn_reg regulator_enable successfully\n", __func__);
+				}
+			} else {
+				pr_err("%s: ctrl_pdata->lcd2_5v_vsn_reg not exist!\n", __func__);
+			}
+		}
+#endif
 		if (gpio_is_valid(ctrl_pdata->lcd_3v_vsp_en_gpio)){
 			//gpio_set_value((ctrl_pdata->lcd_5v_vsp_en_gpio), 1);
 			gpio_direction_output((ctrl_pdata->lcd_3v_vsp_en_gpio), 1);
-		}
-		else
-		{
+		} else {
 			pr_debug("%s:%d, lcd_3v_vsp_en_gpio not configured\n",
 				 __func__, __LINE__);
 		}
@@ -1672,13 +1806,53 @@ void mdss_dsi_panel_3v_power(struct mdss_panel_data *pdata, int enable)
 #endif
 
 	} else {
-			if (gpio_is_valid(ctrl_pdata->lcd_3v_vsp_en_gpio)){
+#ifdef CONFIG_BOARD_FUJISAN
+		if (ctrl_pdata->ndx == DSI_CTRL_RIGHT) {
+			if (ctrl_pdata->lcd2_5v_vsp_reg) {
+				pr_info("%s: regulator_disable lcd2_5v_vsp_reg\n", __func__);
+				regulator_disable(ctrl_pdata->lcd2_5v_vsp_reg);
+			}
 
+			if (ctrl_pdata->lcd2_5v_vsn_reg) {
+				pr_info("%s: regulator_disable lcd2_5v_vsn_reg\n", __func__);
+				regulator_disable(ctrl_pdata->lcd2_5v_vsn_reg);
+			}
+			msleep(5);
+
+			if (gpio_is_valid(ctrl_pdata->lcd_5v_vsp_en_gpio)) {
+				pr_info("%s: disable lcd_5v_vsp_en_gpio\n", __func__);
+				gpio_direction_output((ctrl_pdata->lcd_5v_vsp_en_gpio), 0);
+			}
+			msleep(2);
+
+			if (gpio_is_valid(ctrl_pdata->lcd_5v_vsn_en_gpio)) {
+				pr_info("%s: disable lcd_5v_vsn_en_gpio\n", __func__);
+				gpio_direction_output((ctrl_pdata->lcd_5v_vsn_en_gpio), 0);
+			}
+			msleep(2);
+		}
+#endif
+			if (gpio_is_valid(ctrl_pdata->lcd_3v_vsp_en_gpio)) {
 				//gpio_set_value((ctrl_pdata->lcd_5v_vsp_en_gpio), 0);
 				gpio_direction_output((ctrl_pdata->lcd_3v_vsp_en_gpio), 0);
 			}
 #ifndef ZTE_SAMSUNG_ACL_HBM
 			msleep(2);
+#endif
+#ifdef CONFIG_BOARD_FUJISAN
+		if (ctrl_pdata->ndx == DSI_CTRL_RIGHT) {
+			if (ctrl_pdata->lcd2_2p8_reg) {
+				pr_info("%s: regulator_disable lcd2_2p8_reg\n", __func__);
+				/*regulator_disable(ctrl_pdata->lcd2_2p8_reg);*/
+			}
+		}
+
+		if (ctrl_pdata->ndx == DSI_CTRL_LEFT) {
+			if (ctrl_pdata->lcd_2p8_reg) {
+				pr_info("%s: regulator_disable lcd_2p8_reg\n", __func__);
+				regulator_disable(ctrl_pdata->lcd_2p8_reg);
+			}
+		}
 #endif
 	}
 }
@@ -2593,7 +2767,11 @@ static void mdss_panel_parse_te_params(struct device_node *np,
 		!of_property_read_bool(np, "qcom,mdss-tear-check-disable");
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-sync-cfg-height", &tmp);
+#ifndef ZTE_FASTMMI_MANUFACTURING_VERSION
 	te->sync_cfg_height = (!rc ? tmp : 0xfff0);
+#else
+	te->sync_cfg_height = timing->yres-1;/*no lcd could boot for pv version*/
+#endif
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-sync-init-val", &tmp);
 	te->vsync_init_val = (!rc ? tmp : timing->yres);
@@ -2607,10 +2785,18 @@ static void mdss_panel_parse_te_params(struct device_node *np,
 	te->refx100 = (!rc ? tmp : 6000);
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-start-pos", &tmp);
+#ifndef ZTE_FASTMMI_MANUFACTURING_VERSION
 	te->start_pos = (!rc ? tmp : timing->yres);
+#else
+	te->start_pos = timing->yres - timing->yres*55/1000;/*no lcd could boot for pv version*/
+#endif
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-rd-ptr-trigger-intr", &tmp);
+#ifndef ZTE_FASTMMI_MANUFACTURING_VERSION
 	te->rd_ptr_irq = (!rc ? tmp : timing->yres + 1);
+#else
+	te->rd_ptr_irq = timing->yres - timing->yres*55/1000-1;/*no lcd could boot for pv version*/
+#endif
 	te->wr_ptr_irq = 0;
 }
 
@@ -3809,16 +3995,13 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->panel_data.vr_mode_enable = mdss_dsi_panel_enable_R_AID;
 
-	if(zte_display_init==0)
-	{
+	if (zte_display_init == 0) {
       mutex_init(&zte_display_lock);
 	  zte_display_init=1;
 	}
 #ifdef ZTE_SAMSUNG_ACL_HBM
    samsung_panel_proc_init(ctrl_pdata);
 #endif
-
-
 
 	mdss_dsi_panel_lcd_proc(node);
 	return 0;

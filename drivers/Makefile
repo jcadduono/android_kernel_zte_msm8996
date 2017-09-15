@@ -171,5 +171,7 @@ obj-$(CONFIG_BIF)		+= bif/
 
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
 
+obj-$(CONFIG_SENSORS_MXM1120)	+= hallsensors/
+
 # <t-base drivers
 obj-$(CONFIG_MOBICORE_DRIVER)	+= gud/

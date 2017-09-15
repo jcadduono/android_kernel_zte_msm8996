@@ -71,7 +71,7 @@
 *#define pr_debug NFC_DBG_MSG
 *#define pr_warning NFC_DBG_MSG
 */
-#define DBG_MODULE 1
+#define DBG_MODULE 0
 #if DBG_MODULE
 #define NFC_DBG_MSG(fmt, msg...) pr_err(" %s: "fmt, __func__, ##msg)
 #else

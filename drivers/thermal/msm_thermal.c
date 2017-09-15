@@ -1937,7 +1937,9 @@ static void
 low_wmark_func(struct work_struct *dummy)
 {
 	reset_low_wmark_max_freq();
+	if (freq_mitigation_task) {
 	complete(&freq_mitigation_complete);
+	}
 	if (low_wmark_max_freq) {
 		schedule_delayed_work(&low_wmark_work, WMARD_DELAY);
 	}
@@ -1965,7 +1967,9 @@ app_max_freq_limit_store(struct device *dev, struct device_attribute *attr,
 		return -EINVAL;
 	low_wmark_max_freq = max;
 	low_wmark_max_freq_jiffies = jiffies;
+	if (freq_mitigation_task) {
 	complete(&freq_mitigation_complete);
+	}
 	schedule_delayed_work(&low_wmark_work, WMARD_DELAY);
 	return count;
 }

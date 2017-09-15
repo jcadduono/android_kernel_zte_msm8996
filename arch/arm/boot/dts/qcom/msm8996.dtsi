@@ -39,7 +39,6 @@
 		i2c6 = &i2c_6;
 		i2c7 = &i2c_7;
 		i2c8 = &i2c_8;
-		i2c12 = &i2c_12;
 		spi0 = &spi_0;
 	};
 
@@ -225,7 +224,7 @@
 		};
 
 		cont_splash_mem_hdmi: cont_splash_mem_hdmi@b1c00000 {
-			reg = <0 0xb1c00000 0 0x23ff000>;
+			reg = <0 0xb1c00000 0 0>;
 			label = "cont_splash_mem_hdmi";
 		};
 	};
@@ -335,27 +334,7 @@
 		clock-names = "core_clk", "iface_clk";
 	};
 
-	i2c_12: i2c@75ba000 {
-		compatible = "qcom,i2c-msm-v2";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		reg = <0x75ba000 0x1000>;
-		interrupt-names = "qup_irq";
-		interrupts = <0 106 0>;
-		dmas = <&dma_blsp2 22 64 0x20000020 0x20>,
-			<&dma_blsp2 23 32 0x20000020 0x20>;
-		dma-names = "tx", "rx";
-		qcom,master-id = <84>;
-		qcom,clk-freq-out = <400000>;
-		qcom,clk-freq-in  = <19200000>;
-		clock-names = "iface_clk", "core_clk";
-		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
-			 <&clock_gcc clk_gcc_blsp2_qup6_i2c_apps_clk>;
-		pinctrl-names = "i2c_active", "i2c_sleep";
-		pinctrl-0 = <&i2c_12_active>;
-		pinctrl-1 = <&i2c_12_sleep>;
-	};
+
 
 
 	dma_blsp1: qcom,sps-dma@0x7544000{ /* BLSP1 */
@@ -438,6 +417,7 @@
                         ak8157,rstn-gpio-tmp = <&pm8994_gpios 12 0>;
                 };
 	};
+
 
 	i2c_7: i2c@75b5000 { /* BLSP2 QUP1 */
 		compatible = "qcom,i2c-msm-v2";
@@ -3057,7 +3037,7 @@
 
 // ZTE_chenjun
 	sound-ak4961 {
-		compatible = "qcom,msm8996-asoc-snd-tomtom";
+		compatible = "qcom,msm8996-asoc-snd-ak4961";
 		#if 1
 		qcom,model = "msm8996-ak4961-snd-card";
 		#else
@@ -3070,7 +3050,7 @@
 
 		qcom,rcv-sw-gpio = <&pm8994_gpios 13 0>;
 
-		qcom,tomtom-mclk-clk-freq = <9600000>;
+		qcom,ak4961-mclk-clk-freq = <9600000>;
 		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
 				<&loopback>, <&compress>, <&hostless>,
 				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>;

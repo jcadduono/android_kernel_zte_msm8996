@@ -355,6 +355,9 @@ static int zte_misc_fingerprint_hw_check(struct device *dev)
 	case FINGERPRINT_CHIPID_GOODIX_GF3258:
 		fingerprint_id_name = "GF3258";
 		break;
+	case FINGERPRINT_CHIPID_FPC:
+		fingerprint_id_name = "FPC1140";
+		break;
 	case FINGERPRINT_CHIPID_SYNAFP:
 		fingerprint_id_name = "SYNAFP";
 		break;
@@ -384,6 +387,11 @@ bool is_goodix_milan_fp(void)
 bool is_synafp_fp(void)
 {
 	return (fingerprint_hw == FINGERPRINT_CHIPID_SYNAFP);
+}
+
+bool is_fpc_fp(void)
+{
+	return (fingerprint_hw == FINGERPRINT_CHIPID_FPC);
 }
 
 /*************************************************

@@ -6451,6 +6451,8 @@ static const struct ak4961_reg_mask_val ak4961_codec_reg_init_val[] = {
 
 	/* set Sync Domain 7 source: PLLCLK1 */
 	{MSYNC7_MSN_CKS, 0x1F, 0x01},
+	{MSYNC7_BDV, 0xFF, 0x27},
+	{MSYNC7_SDV, 0xFF, 0x3F},
 
 	/* set CODEC Clock Source -> PLLCLK1 */
 	{CDCMCLK_SOURCE_SELECTOR, 0x1F, 0x01},

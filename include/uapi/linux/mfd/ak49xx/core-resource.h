@@ -39,13 +39,27 @@ enum {
 	AK4961_NUM_IRQS,
 };
 
-#define MAX(X, Y) (((int)X) >= ((int)Y) ? (X) : (Y))
-#define AK49XX_MAX_NUM_IRQS MAX(AK4960_NUM_IRQS, AK4961_NUM_IRQS)
+enum {
+	AK4962_IRQ_JDE = 0,
+	AK4962_IRQ_IDE,
+	AK4962_IRQ_MICE,
+	AK4962_IRQ_SARE,
+	AK4962_NUM_IRQS,
+};
 
+#define MAX(X, Y) (((int)X) >= ((int)Y) ? (X) : (Y))
+#ifdef CONFIG_AK4961_CODEC
+#define AK49XX_MAX_NUM_IRQS MAX(AK4960_NUM_IRQS, AK4961_NUM_IRQS)
+#endif
+#ifdef CONFIG_AK4962_CODEC
+#define AK49XX_MAX_NUM_IRQS MAX(AK4962_NUM_IRQS, AK4961_NUM_IRQS)
+#endif
+#if 0 /*del for compile*/
 struct intr_data {
 	int intr_num;
 	bool clear_first;
 };
+#endif
 
 enum ak49xx_pm_state {
 	AK49XX_PM_SLEEPABLE,

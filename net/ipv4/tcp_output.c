@@ -81,7 +81,7 @@ static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
 
 /*ZTE_LC_TCP_DEBUG, 20130116 start*/
 int tcp_socket_debugfs = 0; /*1 TCP, 2 IP, 3 TCP&IP*/
-int ip_log_pm = 1;    /*ZTE_PM_TCP  lcf@20160523*/
+int ip_log_pm = 0;    /*ZTE_PM_TCP  lcf@20160523*/
 /*ZTE_LC_TCP_DEBUG, 20130116 end*/
 /* Account for new data that has been sent to the network. */
 static void tcp_event_new_data_sent(struct sock *sk, const struct sk_buff *skb)
@@ -3507,9 +3507,10 @@ static int lcd_fb_callback(struct notifier_block *nfb, unsigned long event, void
 	struct fb_event *evdata = data;
 	int *blank;
 
-	if (!(tcp_socket_debugfs & 0x00000004))
+	if (!(tcp_socket_debugfs & 0x00000004)) {
+		ip_log_pm = 0;
 		return 0;
-
+	}
 	pr_info("ZTE_PM %s enter , event=%lu\n", __func__, event);
 	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
 		blank = evdata->data;

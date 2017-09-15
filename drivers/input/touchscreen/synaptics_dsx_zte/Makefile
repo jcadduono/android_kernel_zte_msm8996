@@ -4,6 +4,10 @@
 
 # Each configuration option enables a list of files.
 
+ifeq ($(ZTE_TS_FIRMWARE_UPDATE_IMPROVE), true)
+ccflags-y += -DZTE_TS_FIRMWARE_UPDATE_IMPROVE
+endif
+
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_I2C) += synaptics_dsx_i2c.o
 //obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_SPI) += synaptics_dsx_spi.o
 //obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_RMI_HID_I2C) += synaptics_dsx_rmi_hid_i2c.o

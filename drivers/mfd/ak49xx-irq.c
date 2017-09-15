@@ -24,6 +24,10 @@
 #ifdef CONFIG_AK4961_CODEC
 #include <linux/mfd/ak49xx/ak4961_registers.h>
 #endif
+#ifdef CONFIG_AK4962_CODEC
+#include <linux/mfd/ak49xx/ak4962_registers.h>
+#endif
+
 #include <linux/delay.h>
 #include <linux/irqdomain.h>
 #include <linux/interrupt.h>
@@ -51,7 +55,7 @@ struct ak49xx_irq_drv_data {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *cdc_int_cfg;
 	int es804_rst_gpio;
-	int es804_ldo_gpio;
+	/*int es804_ldo_gpio;*/
 };
 #endif
 
@@ -67,10 +71,18 @@ struct ak49xx_irq {
 	bool level;
 };
 
-static struct ak49xx_irq ak49xx_irqs[AK4961_NUM_IRQS] = {
+#ifdef CONFIG_AK4961_CODEC
+static struct ak49xx_irq ak49xx_irqs[AK49XX_MAX_NUM_IRQS] = {
+	/* [0] = { .level = 1}, */
+	/* All other ak49xx interrupts are edge triggered */
+};
+#endif
+#ifdef CONFIG_AK4962_CODEC
+static struct ak49xx_irq ak49xx_irqs[AK49XX_MAX_NUM_IRQS] = {
 	/* [0] = { .level = 1}, */
 /* All other ak49xx interrupts are edge triggered */
 };
+#endif
 
 static int virq_to_phyirq(
 	struct ak49xx_core_resource *ak49xx_res, int virq);
@@ -253,7 +265,9 @@ static irqreturn_t ak49xx_irq_thread(int irq, void *data)
 
 /* ZTE_chenjun */
 	if (ret == 0) {
+#ifdef CONFIG_AK4961_CODEC
 	    ak49xx_res->codec_reg_write(ak49xx_res,DETECTION_EVENT_RESET, 0x01);
+#endif
 	    pr_err("[LHS] %s , line%d , no JDE at all !\n",__func__,__LINE__);
 	    ak49xx_unlock_sleep(ak49xx_res);
 	    return IRQ_NONE;
@@ -266,6 +280,7 @@ static irqreturn_t ak49xx_irq_thread(int irq, void *data)
 	/* Find out which interrupt was triggered and call that interrupt's
 	 * handler function
 	 */
+#ifdef CONFIG_AK4961_CODEC
 	if (status[BIT_BYTE(AK4961_IRQ_JDE)] &
 	    BYTE_BIT_MASK(AK4961_IRQ_JDE))
 		ak49xx_irq_dispatch(ak49xx_res, AK4961_IRQ_JDE);
@@ -274,12 +289,27 @@ static irqreturn_t ak49xx_irq_thread(int irq, void *data)
 		BYTE_BIT_MASK(AK4961_IRQ_RCE))
 		ak49xx_irq_dispatch(ak49xx_res, AK4961_IRQ_RCE);
 
-#ifdef CONFIG_AK4961_CODEC
 	if (status[BIT_BYTE(AK4961_IRQ_VAD)] &
 		BYTE_BIT_MASK(AK4961_IRQ_VAD))
 		ak49xx_irq_dispatch(ak49xx_res, AK4961_IRQ_VAD);
 #endif
+#ifdef CONFIG_AK4962_CODEC
+	if (status[BIT_BYTE(AK4962_IRQ_JDE)] &
+	    BYTE_BIT_MASK(AK4962_IRQ_JDE))
+		ak49xx_irq_dispatch(ak49xx_res, AK4962_IRQ_JDE);
 
+	if (status[BIT_BYTE(AK4962_IRQ_IDE)] &
+		BYTE_BIT_MASK(AK4962_IRQ_IDE))
+		ak49xx_irq_dispatch(ak49xx_res, AK4962_IRQ_IDE);
+
+	if (status[BIT_BYTE(AK4962_IRQ_MICE)] &
+		BYTE_BIT_MASK(AK4962_IRQ_MICE))
+		ak49xx_irq_dispatch(ak49xx_res, AK4962_IRQ_MICE);
+
+	if (status[BIT_BYTE(AK4962_IRQ_SARE)] &
+		BYTE_BIT_MASK(AK4962_IRQ_SARE))
+		ak49xx_irq_dispatch(ak49xx_res, AK4962_IRQ_SARE);
+#endif
 	ak49xx_unlock_sleep(ak49xx_res);
 	return IRQ_HANDLED;
 }
@@ -323,7 +353,7 @@ int ak49xx_irq_init(struct ak49xx_core_resource *ak49xx_res)
 	pr_debug("%s: probed irq %d\n", __func__, ak49xx_res->irq);
 
 	/* Mask the individual interrupt sources */
-	for (i = 0; i < AK4961_NUM_IRQS; i++) {
+	for (i = 0; i < AK49XX_MAX_NUM_IRQS; i++) {
 		/* Map OF irq */
 		virq = ak49xx_map_irq(ak49xx_res, i);
 		pr_debug("%s: irq %d -> %d\n", __func__, i, virq);

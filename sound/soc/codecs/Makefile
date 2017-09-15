@@ -30,6 +30,7 @@ snd-soc-ak4641-objs := ak4641.o
 snd-soc-ak4642-objs := ak4642.o
 snd-soc-ak4671-objs := ak4671.o
 snd-soc-ak4961-objs := ak4961.o ak4961-tables.o
+snd-soc-ak4962-objs := ak4962.o ak4962-tables.o
 snd-soc-ak5386-objs := ak5386.o
 snd-soc-arizona-objs := arizona.o
 snd-soc-cq93vc-objs := cq93vc.o
@@ -191,6 +192,10 @@ snd-soc-max9877-objs := max9877.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
 snd-soc-tas2552-objs := tas2552.o
 
+snd-soc-tfa98xx-objs := tfa98xx.o tfa_container.o tfa_dsp.o tfa9890_init.o tfa9888_init.o tfa9891_init.o tfa9897_init.o tfa9887B_init.o tfa9887_init.o
+
+obj-$(CONFIG_ZTE_NXP_SMART_PA)	+= snd-soc-tfa98xx.o
+
 obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o
 obj-$(CONFIG_SND_SOC_AB8500_CODEC)	+= snd-soc-ab8500-codec.o
 obj-$(CONFIG_SND_SOC_AC97_CODEC)	+= snd-soc-ac97.o
@@ -223,6 +228,7 @@ obj-$(CONFIG_SND_SOC_AK4641)	+= snd-soc-ak4641.o
 obj-$(CONFIG_SND_SOC_AK4642)	+= snd-soc-ak4642.o
 obj-$(CONFIG_SND_SOC_AK4671)	+= snd-soc-ak4671.o
 obj-$(CONFIG_SND_SOC_AK4961)	+= snd-soc-ak4961.o
+obj-$(CONFIG_SND_SOC_AK4962)	+= snd-soc-ak4962.o
 obj-$(CONFIG_SND_SOC_AK5386)	+= snd-soc-ak5386.o
 obj-$(CONFIG_SND_SOC_ALC5623)    += snd-soc-alc5623.o
 obj-$(CONFIG_SND_SOC_ALC5632)	+= snd-soc-alc5632.o

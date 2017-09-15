@@ -37,7 +37,6 @@
 #include "gadget_chips.h"
 
 #include <linux/syscalls.h>
-
 #ifdef CONFIG_MEDIA_SUPPORT
 #include "f_uvc.h"
 #include "u_uvc.h"

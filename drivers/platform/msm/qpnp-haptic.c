@@ -350,9 +350,9 @@ struct qpnp_hap {
 	u8 lra_res_cal_period;
 	u8 sc_duration;
 	u8 ext_pwm_dtest_line;
-	bool vcc_pon_enabled;
 	//bool state;
 	u32 state;
+	bool vcc_pon_enabled;
 	bool use_play_irq;
 	bool use_sc_irq;
 	bool manage_pon_supply;

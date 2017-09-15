@@ -237,6 +237,7 @@
 			qcom,aicl-rerun-period-s = <180>;
 			qcom,vchg-adc-channel-id = <3>;
 			qcom,vchg_sns-vadc = <&pmi8994_vadc>;
+			qcom,apsd_rerun_config_enable;
 
 			qcom,chgr@1000 {
 				reg = <0x1000 0x100>;

@@ -3950,6 +3950,16 @@ static int mdss_dsi_parse_gpio_params(struct platform_device *ctrl_pdev,
 		pr_err("%s:%d, reset gpio not specified\n",
 						__func__, __LINE__);
 
+#ifdef CONFIG_BOARD_FUJISAN
+	ctrl_pdata->rst2_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
+			"qcom,platform-reset2-gpio", 0);
+	if (!gpio_is_valid(ctrl_pdata->rst2_gpio))
+		pr_err("%s:%d, reset 2 gpio not specified\n",
+						__func__, __LINE__);
+	pr_info("%s:ctrl_pdata->ndx=%d ctrl_pdata->rst_gpio=%d ctrl_pdata->rst2_gpio=%d\n",
+						__func__, ctrl_pdata->ndx, ctrl_pdata->rst_gpio, ctrl_pdata->rst2_gpio);
+#endif
+
 	if (pinfo->mode_gpio_state != MODE_GPIO_NOT_VALID) {
 
 		ctrl_pdata->mode_gpio = of_get_named_gpio(
@@ -4059,6 +4069,64 @@ int dsi_panel_device_register(struct platform_device *ctrl_pdev,
 			       rc);
 		}
 	}
+
+#ifdef CONFIG_BOARD_FUJISAN
+	ctrl_pdata->lcd_5v_vsp_en_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
+		"zte,lcd-5v-vsp-enable-gpio", 0);
+	if (!gpio_is_valid(ctrl_pdata->lcd_5v_vsp_en_gpio)) {
+		pr_err("%s:%d, qcom,lcd-5v-vsp-enable-gpio not specified\n",
+						__func__, __LINE__);
+	} else {
+		pr_info("LCD %s:, qcom,lcd-5v-vsp-enable-gpio found!\n", __func__);
+		rc = gpio_request(ctrl_pdata->lcd_5v_vsp_en_gpio, "lcd_5v_vsp_en_gpio");
+		if (rc) {
+			pr_err("%s: request lcd_5v_vsp_en_gpio failed, rc=%d\n",
+			       __func__, rc);
+		}
+	}
+
+	ctrl_pdata->lcd_5v_vsn_en_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
+		"zte,lcd-5v-vsn-enable-gpio", 0);
+	if (!gpio_is_valid(ctrl_pdata->lcd_5v_vsn_en_gpio)) {
+		pr_err("%s:%d, qcom,lcd-5v-vsn-enable-gpio not specified\n",
+						__func__, __LINE__);
+	} else {
+		pr_info("LCD %s: qcom,lcd-5v-vsn-enable-gpio found!\n", __func__);
+		rc = gpio_request(ctrl_pdata->lcd_5v_vsn_en_gpio, "lcd_5v_vsn_en_gpio");
+		if (rc) {
+			pr_err("%s: request lcd_5v_vsn_en_gpio failed, rc=%d\n",
+			       __func__, rc);
+		}
+	}
+
+	ctrl_pdata->lcd_2p8_reg = regulator_get(&(ctrl_pdev->dev), "lcd_2p8");
+	if (IS_ERR(ctrl_pdata->lcd_2p8_reg)) {
+		pr_err("%s: regulator_get lcd_2p8 failed, rc=%d\n", __func__, rc);
+		regulator_put(ctrl_pdata->lcd_2p8_reg);
+		ctrl_pdata->lcd_2p8_reg = NULL;
+	}
+
+	ctrl_pdata->lcd2_2p8_reg = regulator_get(&(ctrl_pdev->dev), "lcd2_2p8");
+	if (IS_ERR(ctrl_pdata->lcd2_2p8_reg)) {
+		pr_err("%s: regulator_get lcd2_2p8 failed, rc=%d\n", __func__, rc);
+		regulator_put(ctrl_pdata->lcd2_2p8_reg);
+		ctrl_pdata->lcd2_2p8_reg = NULL;
+	}
+
+	ctrl_pdata->lcd2_5v_vsp_reg = regulator_get(&(ctrl_pdev->dev), "lcd2_5v_vsp");
+	if (IS_ERR(ctrl_pdata->lcd2_5v_vsp_reg)) {
+		pr_err("%s: regulator_get lcd2_5v_vsp_reg failed, rc=%d\n", __func__, rc);
+		regulator_put(ctrl_pdata->lcd2_5v_vsp_reg);
+		ctrl_pdata->lcd2_5v_vsp_reg = NULL;
+	}
+
+	ctrl_pdata->lcd2_5v_vsn_reg = regulator_get(&(ctrl_pdev->dev), "lcd2_5v_vsn");
+	if (IS_ERR(ctrl_pdata->lcd2_5v_vsn_reg)) {
+		pr_err("%s: regulator_get lcd2_5v_vsn_reg failed, rc=%d\n", __func__, rc);
+		regulator_put(ctrl_pdata->lcd2_5v_vsn_reg);
+		ctrl_pdata->lcd2_5v_vsn_reg = NULL;
+	}
+#endif
 
 	rc = mdss_dsi_parse_gpio_params(ctrl_pdev, ctrl_pdata);
 	if (rc) {

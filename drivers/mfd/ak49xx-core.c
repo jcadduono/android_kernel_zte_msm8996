@@ -28,6 +28,10 @@
 #ifdef CONFIG_AK4961_CODEC
 #include <linux/mfd/ak49xx/ak4961_registers.h>
 #endif
+#ifdef CONFIG_AK4962_CODEC
+#include <linux/mfd/ak49xx/ak4962_registers.h>
+#endif
+
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
@@ -42,7 +46,7 @@
 #define SLIMBUS_PRESENT_TIMEOUT 100
 
 #define CODEC_DT_MAX_PROP_SIZE   40
-//for slim_spi 2014-11-17
+/* for slim_spi 2014-11-17 */
 #define CONTROL_IF_SPI
 #ifdef CONTROL_IF_SPI
 struct ak49xx *ak49xx_slim_spi;
@@ -55,6 +59,9 @@ struct pinctrl_info {
 };
 
 static struct pinctrl_info pinctrl_info;
+#ifdef CONFIG_AK4962_CODEC
+struct mutex ak49xx_spi_mutex;/*add by shengguanghui for spi mutex at 20160719*/
+#endif
 int ak49xx_spi_read(struct ak49xx *ak49xx, unsigned short reg,int bytes, void *dest, bool interface_reg);
 int ak49xx_spi_write(struct ak49xx *ak49xx, unsigned short reg, int bytes, void *src, bool interface_reg);
 static int ak49xx_slim_write_device(struct ak49xx *ak49xx,
@@ -140,6 +147,7 @@ int ak49xx_reg_read(
 	unsigned short reg)
 {
 	struct ak49xx *ak49xx = (struct ak49xx *) core_res->parent;
+
 	return __ak49xx_reg_read(ak49xx, reg);
 
 }
@@ -179,6 +187,7 @@ int ak49xx_reg_write(
 	unsigned short reg, u8 val)
 {
 	struct ak49xx *ak49xx = (struct ak49xx *) core_res->parent;
+
 	return __ak49xx_reg_write(ak49xx, reg, val);
 }
 EXPORT_SYMBOL(ak49xx_reg_write);
@@ -192,7 +201,7 @@ int ak49xx_interface_reg_read(struct ak49xx *ak49xx, unsigned short reg)
 	int ret;
 
 	mutex_lock(&ak49xx->io_lock);
-//	ret = ak49xx_read(ak49xx, reg, 1, &val, true);
+/*	ret = ak49xx_read(ak49xx, reg, 1, &val, true); */
 	ret = ak49xx_slim_read_device(ak49xx, reg, 1, &val, true);
 	mutex_unlock(&ak49xx->io_lock);
 
@@ -209,7 +218,7 @@ int ak49xx_interface_reg_write(struct ak49xx *ak49xx, unsigned short reg,
 	int ret;
 
 	mutex_lock(&ak49xx->io_lock);
-	//ret = ak49xx_write(ak49xx, reg, 1, &val, true);
+	/* ret = ak49xx_write(ak49xx, reg, 1, &val, true); */
 	ret = ak49xx_slim_write_device(ak49xx, reg, 1, &val, true);
 	mutex_unlock(&ak49xx->io_lock);
 
@@ -223,8 +232,9 @@ static int __ak49xx_bulk_read(
 	int count, u8 *buf)
 {
 	int ret;
+
 	mutex_lock(&ak49xx->io_lock);
-	//for slim_spi 2014-11-17
+	/* for slim_spi 2014-11-17 */
 	if (ak49xx_intf == AK49XX_INTERFACE_TYPE_SPI ||ak49xx_intf == AK49XX_INTERFACE_TYPE_SLIMBUS_SPI) {
 		ret = ak49xx_read(ak49xx, reg, count, buf, false);
 	} else {
@@ -253,7 +263,7 @@ static int __ak49xx_bulk_write(struct ak49xx *ak49xx, unsigned short reg,
 	int ret;
 
 	mutex_lock(&ak49xx->io_lock);
-	//for slim_spi 2014-11-17
+	/* for slim_spi 2014-11-17 */
 	if (ak49xx_intf == AK49XX_INTERFACE_TYPE_SPI||ak49xx_intf == AK49XX_INTERFACE_TYPE_SLIMBUS_SPI) {
 		ret = ak49xx_write(ak49xx, reg, count, buf, false);
 	} else {
@@ -278,7 +288,7 @@ EXPORT_SYMBOL(ak49xx_bulk_write);
 int ak49xx_ram_write(struct ak49xx *ak49xx, u8 vat, u8 page,
 					 u16 start, int count, u8 *buf) {
 	int ret, i, addr, line;
-//	u8  prif;
+/*	u8  prif; */
 
 	mutex_lock(&ak49xx->io_lock);
 
@@ -310,7 +320,7 @@ int ak49xx_ram_write(struct ak49xx *ak49xx, u8 vat, u8 page,
 				pr_err("failed to write ram data in SLIMbus mode.\n");
 			}
 		}
-		//for slim_spi 2014-11-17
+		/* for slim_spi 2014-11-17 */
 	} else if (ak49xx_intf == AK49XX_INTERFACE_TYPE_SPI ||
 		ak49xx_intf == AK49XX_INTERFACE_TYPE_SLIMBUS_SPI) {
 
@@ -329,7 +339,8 @@ int ak49xx_ram_write(struct ak49xx *ak49xx, u8 vat, u8 page,
 }
 EXPORT_SYMBOL(ak49xx_ram_write);
 
-int ak49xx_run_ram_write(struct ak49xx *ak49xx, u8 *buf) {
+int ak49xx_run_ram_write(struct ak49xx *ak49xx, u8 *buf)
+{
 	int i, ret = 0;
 	u8 runc = 0x01;
 
@@ -366,6 +377,32 @@ int ak49xx_run_ram_write(struct ak49xx *ak49xx, u8 *buf) {
 	return ret;
 }
 EXPORT_SYMBOL(ak49xx_run_ram_write);
+#ifdef CONFIG_AK4962_CODEC
+int ak49xx_cram_read(unsigned short reg,
+			int bytes, void *dest)
+{
+	u8 tx[3];
+	u8 *d = dest;
+	int ret = 0;
+
+	tx[0] = 0x25;
+	tx[1] = reg >> 8;
+	tx[2] = reg & 0xFF;
+
+	if (ak49xx_intf == AK49XX_INTERFACE_TYPE_SPI ||
+		ak49xx_intf == AK49XX_INTERFACE_TYPE_SLIMBUS_SPI) {
+
+		mutex_lock(&ak49xx_spi_mutex);
+		ret = spi_write_then_read(ak49xx_spi, tx, 3, d, bytes);
+		mutex_unlock(&ak49xx_spi_mutex);
+		if (ret != 0) {
+			pr_err("failed to read ak49xx cram\n");
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL(ak49xx_cram_read);
+#endif
 
 static int ak49xx_slim_read_device(struct ak49xx *ak49xx, unsigned short reg,
 				int bytes, void *dest, bool interface)
@@ -500,6 +537,12 @@ static struct mfd_cell ak4961_dev[] = {
 	},
 };
 
+static struct mfd_cell ak4962_dev[] = {
+	{
+		.name = "ak4962_codec",
+	},
+};
+
 static void ak49xx_bring_up(struct ak49xx *ak49xx)
 {
 	ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT0_ARRAY, 0x0A);
@@ -509,8 +552,8 @@ static void ak49xx_bring_up(struct ak49xx *ak49xx)
 	ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT4_ARRAY, 0x0E);
 	ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT5_ARRAY, 0x0F);
 
-	//ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT8_ARRAY, 0x02);
-	//ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT9_ARRAY, 0x04);
+	/* ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT8_ARRAY, 0x02); */
+	/* ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT9_ARRAY, 0x04); */
 }
 
 void ak49xx_slimbus_interfacereg_setup(struct ak49xx *ak49xx)
@@ -524,8 +567,8 @@ void ak49xx_slimbus_interfacereg_setup(struct ak49xx *ak49xx)
 	ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT4_ARRAY, 0x0E);
 	ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT5_ARRAY, 0x0F);
 
-	//ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT8_ARRAY, 0x02);
-	//ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT9_ARRAY, 0x04);
+	/* ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT8_ARRAY, 0x02); */
+	/* ak49xx_interface_reg_write(ak49xx, AK496X_SLIM_PGD_PORT9_ARRAY, 0x04); */
 	pr_err("[LHS] %s out \n",__func__);
 }
 
@@ -539,42 +582,31 @@ static void ak49xx_bring_down(struct ak49xx *ak49xx)
 int ak49xx_power_test(struct ak49xx *ak49xx,int val)
 {
 	int ret;
+
 	pr_err("[LHS] %s line %d enter val =%d!\n",__func__,__LINE__,val);
-	if(val==0)
-		{
-			if(ak49xx->ldoen_gpio)
-				{
+	if (val == 0) {
+		if (ak49xx->ldoen_gpio) {
 				pr_err("[LHS] %s ldo on\n",__func__);
 				ret= gpio_direction_output(ak49xx->ldoen_gpio, 1);
 				}
-		}
-	else if(val==1)
-		{
-			if(ak49xx->ldoen_gpio)
-				{
+	} else if (val == 1) {
+		if (ak49xx->ldoen_gpio) {
 				pr_err("[LHS] %s ldo off\n",__func__);
 				ret= gpio_direction_output(ak49xx->ldoen_gpio, 0);
 				}
-		}
-	else if(val==2)
-		{
+	} else if (val == 2) {
 			if(ak49xx->reset_gpio){
 				pr_err("[LHS] %s reset on\n",__func__);
 				ret=gpio_direction_output(ak49xx->reset_gpio, 1);
 				}
-		}
-	else if(val==3)
-		{
-			if(ak49xx->reset_gpio)
-				{
+	} else if (val == 3) {
+		if (ak49xx->reset_gpio) {
 				pr_err("[LHS] %s reset off\n",__func__);
 				ret=gpio_direction_output(ak49xx->reset_gpio, 0);
 				}
-		}
-	else
-		{
+	} else
 			pr_err("[LHS] %s nothing test !\n",__func__);
-		}
+
 	return ret;
 }
 EXPORT_SYMBOL(ak49xx_power_test);
@@ -584,12 +616,11 @@ EXPORT_SYMBOL(ak49xx_power_test);
 static int ak49xx_ldo_en(struct ak49xx *ak49xx)
 {
       int ret;
-//
+
       if (ak49xx->ldo_use_pinctrl) {
           ret = pinctrl_select_state(ak49xx->pinctrl,
                                                 ak49xx->gpio_state_active);
-          // msleep(30); // chenjun:orig:100
-
+		/* msleep(30); // chenjun:orig:100*/
           if (ret) {
               pr_err("%s(): error select active state",
                          __func__);
@@ -597,22 +628,21 @@ static int ak49xx_ldo_en(struct ak49xx *ak49xx)
 
           pr_err("%s(): 2: ldoen_gpio(%d) value(%d)",
                          __func__, ak49xx->ldoen_gpio, gpio_get_value_cansleep(ak49xx->ldoen_gpio));
-
       }
-//
-      if (ak49xx->ldoen_gpio)
-	{
+
+	if (ak49xx->ldoen_gpio) {
 	 ret = gpio_request(ak49xx->ldoen_gpio, "LDO_EN");
 		if (ret) {
 			pr_err("%s: Failed to request gpio %d\n", __func__,
 				ak49xx->ldoen_gpio);
-			// ak49xx->ldoen_gpio = 0;
-			// return ret;
+			/* ak49xx->ldoen_gpio = 0; */
+			/* return ret; */
 		}
 	}
+
          if(ak49xx->ldoen_gpio){
              gpio_direction_output(ak49xx->ldoen_gpio, 1);
-             msleep(30); // chenjun:orig:100
+		msleep(30); /* chenjun:orig:100 */
          }
 
           pr_err("%s(): 3: ldoen_gpio(%d) value(%d)",
@@ -621,11 +651,12 @@ static int ak49xx_ldo_en(struct ak49xx *ak49xx)
 	pr_err("%s\n",__func__);
 	  return 0;
 }
+
 static int ak49xx_reset(struct ak49xx *ak49xx)
 {
 	int ret;
-	//for slim_spi 2014-11-17
-	//#ifdef CONTROL_IF_SPI
+	/*for slim_spi 2014-11-17 */
+	/* #ifdef CONTROL_IF_SPI	*/
 	if (ak49xx->cif1_gpio) {
 		ret = gpio_request(ak49xx->cif1_gpio, "CDC_CIF1");
 		if (ret) {
@@ -635,16 +666,17 @@ static int ak49xx_reset(struct ak49xx *ak49xx)
 			return ret;
 			}
 		}
+
 	if (ak49xx->cif1_gpio) {
 #if defined(CONTROL_IF_SPI)
-		gpio_direction_output(ak49xx->cif1_gpio, 0);// 1-slimbus, 0-spi	 //for test
+		gpio_direction_output(ak49xx->cif1_gpio, 0);/* 1-slimbus, 0-spi	 //for test */
 #else
-		gpio_direction_output(ak49xx->cif1_gpio, 1);// 1-slimbus, 0-spi	 //for test
+		gpio_direction_output(ak49xx->cif1_gpio, 1);/* 1-slimbus, 0-spi	 //for test */
 #endif
-		msleep(1);
+		usleep_range(1000, 1100);
 		}
 
-//	#endif
+/*	#endif */
 	if (ak49xx->reset_gpio && ak49xx->slim_device_bootup
 			&& !ak49xx->use_pinctrl) {
 		ret = gpio_request(ak49xx->reset_gpio, "CDC_RESET");
@@ -678,14 +710,14 @@ static int ak49xx_reset(struct ak49xx *ak49xx)
 			}
 		} else {
 			gpio_direction_output(ak49xx->reset_gpio, 0);
-			msleep(1);
+			usleep_range(1000, 1100);
 			gpio_direction_output(ak49xx->reset_gpio, 1);
 			msleep(20);
 		}
 	}
 
 #if 0
-// ZTE_chenjun
+/* ZTE_chenjun */
       if (ak49xx->pinctrl) {
           ret = pinctrl_select_state(ak49xx->pinctrl,
                                                 ak49xx->smartpa_rst_normal);
@@ -695,10 +727,9 @@ static int ak49xx_reset(struct ak49xx *ak49xx)
                          __func__);
           }
       }
-//
 #endif
-
-// ZTE_chenjun
+#ifndef CONFIG_AK4962_CODEC
+/* ZTE_chenjun */
       if (ak49xx->smartpa_rst1_gpio)
       {
           ret = gpio_request(ak49xx->smartpa_rst1_gpio, "SPA_RST1");
@@ -724,9 +755,7 @@ static int ak49xx_reset(struct ak49xx *ak49xx)
           pr_err("%s():SPA_RST2(%d) value(%d)",
                          __func__, ak49xx->smartpa_rst2_gpio, gpio_get_value_cansleep(ak49xx->smartpa_rst2_gpio));
       }
-
-//
-
+#endif
 	return 0;
 }
 
@@ -781,6 +810,17 @@ static int ak49xx_device_init(struct ak49xx *ak49xx)
 			ak49xx_dev_size = ARRAY_SIZE(ak4961_dev);
 			ak49xx->codec_id = CODEC_AK4961_ID;
 			num_irqs = AK4961_NUM_IRQS;
+		} else if (ak49xx->slim->e_addr[0] == 0x00 &&
+			ak49xx->slim->e_addr[1] == 0x02 &&
+			ak49xx->slim->e_addr[2] == 0x62 &&
+			ak49xx->slim->e_addr[3] == 0x49 &&
+			ak49xx->slim->e_addr[4] == 0xdd &&
+			ak49xx->slim->e_addr[5] == 0x01) {
+
+			ak49xx_dev = ak4962_dev;
+			ak49xx_dev_size = ARRAY_SIZE(ak4962_dev);
+			ak49xx->codec_id = CODEC_AK4962_ID;
+			num_irqs = AK4962_NUM_IRQS;
 		}
 
 
@@ -789,25 +829,21 @@ static int ak49xx_device_init(struct ak49xx *ak49xx)
 
 	/*	if (ak49xx->cif1_gpio) {
 			gpio_direction_output(ak49xx->cif1_gpio, 0);// 1-slimbus, 0-spi
-			msleep(1);
+			usleep_range(1000, 1100);
 			}*/
-		msleep(1);
-		for(cnt=0;cnt<10;cnt++)
-			{
-			if(ak49xx_spi==NULL)
-				{
-				printk("[lhs] %s spi interface not ready !\n",__func__);
+		usleep_range(1000, 1100);
+		for (cnt = 0; cnt < 10; cnt++) {
+			if (ak49xx_spi == NULL) {
+				pr_err("[lhs] %s spi interface not ready !\n", __func__);
 				msleep(500);
-				}
-			else
-				{
+			} else
 				break;
 				}
-			}
 		ak49xx->read_dev = ak49xx_spi_read;
 		ak49xx->write_dev = ak49xx_spi_write;
-		msleep(1);
+		usleep_range(1000, 1100);
 		ret = __ak49xx_reg_read(ak49xx, DEVICE_CODE);
+		pr_err("[lhs] device id ret=0x%2x !\n", ret);
 		if (ret < 0) {
 			goto err;
 		} else {
@@ -822,6 +858,12 @@ static int ak49xx_device_init(struct ak49xx *ak49xx)
 				ak49xx_dev_size = ARRAY_SIZE(ak4961_dev);
 				ak49xx->codec_id = CODEC_AK4961_ID;
 				num_irqs = AK4961_NUM_IRQS;
+			}
+			if (ret == 0x62) {
+				ak49xx_dev = ak4962_dev;
+				ak49xx_dev_size = ARRAY_SIZE(ak4962_dev);
+				ak49xx->codec_id = CODEC_AK4962_ID;
+				num_irqs = AK4962_NUM_IRQS;
 			}
 		}
 	}
@@ -876,11 +918,10 @@ static void ak49xx_device_exit(struct ak49xx *ak49xx)
 	ak49xx_core_res_deinit(&ak49xx->core_res);
 	mutex_destroy(&ak49xx->io_lock);
 	mutex_destroy(&ak49xx->xfer_lock);
-	//for slim_spi 2014-11-17
+	/* for slim_spi 2014-11-17 */
 	if (ak49xx_intf == AK49XX_INTERFACE_TYPE_SLIMBUS||
-		ak49xx_intf == AK49XX_INTERFACE_TYPE_SLIMBUS_SPI)
-		{
-	//	printk("[lhs] %s \n",__func__);
+		ak49xx_intf == AK49XX_INTERFACE_TYPE_SLIMBUS_SPI) {
+		/* printk("[lhs] %s\n",__func__); */
 		slim_remove_device(ak49xx->slim_slave);
 		}
 	kfree(ak49xx);
@@ -892,6 +933,7 @@ static int ak49xx_init_supplies(struct ak49xx *ak49xx,
 {
 	int ret;
 	int i;
+
 	ak49xx->supplies = kzalloc(sizeof(struct regulator_bulk_data) *
 				   ARRAY_SIZE(pdata->regulator),
 				   GFP_KERNEL);
@@ -1073,6 +1115,7 @@ static int ak49xx_read_of_property_u32(struct device *dev,
 	const char *name, u32 *val)
 {
 	int ret = 0;
+
 	ret = of_property_read_u32(dev->of_node, name, val);
 	if (ret)
 		dev_err(dev, "Looking up %s property in node %s failed",
@@ -1125,7 +1168,6 @@ static int ak49xx_dt_parse_slim_interface_dev_info(struct device *dev,
 	return 0;
 }
 
-//
 static void ak49xx_get_pinctrl_configs(struct device *dev, struct ak49xx_pdata *pdata)
 {
 	struct pinctrl_state *set_state;
@@ -1159,7 +1201,7 @@ static void ak49xx_get_pinctrl_configs(struct device *dev, struct ak49xx_pdata *
 			set_state);
 		pdata->gpio_state_suspend = set_state;
 
-// ZTE_chenjun
+/* ZTE_chenjun */
 		set_state = pinctrl_lookup_state(pdata->pinctrl,
 						"smartpa_rst_normal");
 		if (IS_ERR_OR_NULL(set_state)) {
@@ -1178,7 +1220,6 @@ pinctrl_fail:
 	pdata->pinctrl = NULL;
 	return;
 }
-//
 
 static struct ak49xx_pdata *ak49xx_populate_dt_pdata(struct device *dev)
 {
@@ -1249,9 +1290,8 @@ static struct ak49xx_pdata *ak49xx_populate_dt_pdata(struct device *dev)
 		goto err;
 	}
 
-//
 	ak49xx_get_pinctrl_configs(dev, pdata);
-//
+
 	pdata->reset_gpio = of_get_named_gpio(dev->of_node,
 				"akm,cdc-reset-gpio", 0);
 	if (pdata->reset_gpio < 0) {
@@ -1261,8 +1301,8 @@ static struct ak49xx_pdata *ak49xx_populate_dt_pdata(struct device *dev)
 		goto err;
 	}
 	dev_dbg(dev, "%s: reset gpio %d", __func__, pdata->reset_gpio);
-
-// ZTE_chenjun
+#ifndef CONFIG_AK4962_CODEC
+/* ZTE_chenjun */
 	pdata->smartpa_rst1_gpio = of_get_named_gpio(dev->of_node,
 				"nxp,smartpa-rst1-gpio", 0);
 	if (pdata->smartpa_rst1_gpio < 0) {
@@ -1281,7 +1321,7 @@ static struct ak49xx_pdata *ak49xx_populate_dt_pdata(struct device *dev)
 	}
 	dev_err(dev, "%s: smartpa-rst2-gpio %d", __func__, pdata->smartpa_rst2_gpio);
 
-//
+#endif
 	ret = of_property_read_u32(dev->of_node,
 				   "akm,cdc-mclk-clk-rate",
 				   &mclk_rate);
@@ -1374,15 +1414,15 @@ static int ak49xx_slim_probe(struct slim_device *slim)
 	ak49xx->reset_gpio = pdata->reset_gpio;
 	ak49xx->ldoen_gpio = pdata->ldoen_gpio;
 	ak49xx->cif1_gpio = pdata->cif1_gpio;
-//
 	ak49xx->ldo_use_pinctrl = pdata->use_pinctrl;
 	ak49xx->pinctrl = pdata->pinctrl;
 	ak49xx->gpio_state_active = pdata->gpio_state_active;
 	ak49xx->gpio_state_suspend = pdata->gpio_state_suspend;
-	ak49xx->smartpa_rst_normal = pdata->smartpa_rst_normal; // ZTE_chenjun
-	ak49xx->smartpa_rst1_gpio = pdata->smartpa_rst1_gpio; // ZTE_chenjun
-	ak49xx->smartpa_rst2_gpio = pdata->smartpa_rst2_gpio; // ZTE_chenjun
-//
+#ifndef CONFIG_AK4962_CODEC
+	ak49xx->smartpa_rst_normal = pdata->smartpa_rst_normal; /* ZTE_chenjun */
+	ak49xx->smartpa_rst1_gpio = pdata->smartpa_rst1_gpio; /* ZTE_chenjun */
+	ak49xx->smartpa_rst2_gpio = pdata->smartpa_rst2_gpio; /* ZTE_chenjun */
+#endif
 	ak49xx->dev = &slim->dev;
 	ak49xx->mclk_rate = pdata->mclk_rate;
 	ak49xx->slim_device_bootup = true;
@@ -1456,7 +1496,7 @@ static int ak49xx_slim_probe(struct slim_device *slim)
 #ifdef CONTROL_IF_SPI
 	ak49xx_slim_spi = ak49xx;
 #endif
-	//printk("[lhs]%s  out! \n",__func__);
+	/* printk("[lhs]%s  out!\n",__func__); */
 	return ret;
 
 err_slim_add:
@@ -1495,7 +1535,7 @@ int ak49xx_spi_read(struct ak49xx *ak49xx, unsigned short reg,
 
 	ret=ak49xx_spi_read_device(reg, bytes, dest);
 
-	//ret = ak49xx_quam_spi_read_device(reg, bytes, dest);
+	/* ret = ak49xx_quam_spi_read_device(reg, bytes, dest); */
 	return ret;
 }
 
@@ -1514,7 +1554,7 @@ static int ak49xx_spi_probe(struct spi_device *spi)
 	struct ak49xx *ak49xx;
 	struct ak49xx_pdata *pdata;
 	int ret = 0;
-	//int cnt;
+	/* int cnt; */
 	int cs;
 	int cpha,cpol,cs_high;
 	u32 max_speed;
@@ -1524,18 +1564,18 @@ static int ak49xx_spi_probe(struct spi_device *spi)
 		pr_err("ak49xx card is already detected in slimbus mode\n");
 		return -ENODEV;
 	}*/
-//#ifdef CONTROL_IF_SPI
+/*#ifdef CONTROL_IF_SPI */
 	ak49xx_spi = spi;
 	cs = spi->chip_select;
 	cpha = ( spi->mode & SPI_CPHA ) ? 1:0;
 	cpol = ( spi->mode & SPI_CPOL ) ? 1:0;
 	cs_high = ( spi->mode & SPI_CS_HIGH ) ? 1:0;
 	max_speed = spi->max_speed_hz;
-	//printk("[lhs] %s  cs [%d] CPHA [%d] CPOL [%d] CS_HIGH [%d]\n",__func__,cs, cpha, cpol, cs_high);
-//	printk("[lhs] %s Max_speed [%d]\n",__func__ ,max_speed );
+	/* printk("[lhs] %s  cs [%d] CPHA [%d] CPOL [%d] CS_HIGH [%d]\n",__func__,cs, cpha, cpol, cs_high); */
+	/* printk("[lhs] %s Max_speed [%d]\n",__func__ ,max_speed ); */
 
 	return ret;
-//#endif
+/* #endif */
 	ak49xx = kzalloc(sizeof(struct ak49xx), GFP_KERNEL);
 	if (ak49xx == NULL) {
 		pr_err("%s: error, allocation failed\n", __func__);
@@ -1656,6 +1696,7 @@ static int ak49xx_slim_device_reset(struct slim_device *sldev)
 {
 	int ret;
 	struct ak49xx *ak49xx = slim_get_devicedata(sldev);
+
 	if (!ak49xx) {
 		pr_err("%s: ak49xx is NULL\n", __func__);
 		return -EINVAL;
@@ -1674,6 +1715,7 @@ static int ak49xx_slim_device_reset(struct slim_device *sldev)
 static int ak49xx_slim_device_up(struct slim_device *sldev)
 {
 	struct ak49xx *ak49xx = slim_get_devicedata(sldev);
+
 	if (!ak49xx) {
 		pr_err("%s: ak49xx is NULL\n", __func__);
 		return -EINVAL;
@@ -1767,7 +1809,7 @@ static struct spi_driver ak4960_spi_driver = {
 	.resume		= ak49xx_spi_resume,
 	.suspend	= ak49xx_spi_suspend,
 };
-
+#ifdef CONFIG_AK4961_CODEC
 static const struct slim_device_id ak4961_slimtest_id[] = {
 	{"ak4961-slim-pgd", 0},
 	{}
@@ -1797,7 +1839,7 @@ static const struct of_device_id ak4961_match_table[] = {
 static struct spi_driver ak4961_spi_driver = {
 	.driver = {
 		.name	= "ak4961-spi",
-		//.bus	= &spi_bus_type,
+		/* .bus	= &spi_bus_type, */
 		.owner	= THIS_MODULE,
 		.of_match_table = ak4961_match_table,
 	},
@@ -1806,48 +1848,117 @@ static struct spi_driver ak4961_spi_driver = {
 	.resume		= ak49xx_spi_resume,
 	.suspend	= ak49xx_spi_suspend,
 };
+#endif
+#ifdef CONFIG_AK4962_CODEC
+static const struct slim_device_id ak4962_slimtest_id[] = {
+	{"ak4962-slim-pgd", 0},
+	{}
+};
 
+static struct slim_driver ak4962_slim_driver = {
+	.driver = {
+		.name = "ak4962-slim",
+		.owner = THIS_MODULE,
+	},
+	.probe			= ak49xx_slim_probe,
+	.remove			= ak49xx_slim_remove,
+	.id_table		= ak4962_slimtest_id,
+	.resume		= ak49xx_slim_resume,
+	.suspend		= ak49xx_slim_suspend,
+	.device_up		= ak49xx_slim_device_up,
+	.reset_device	= ak49xx_slim_device_reset,
+	.device_down	= ak49xx_slim_device_down,
+};
+
+static const struct of_device_id ak4962_match_table[] = {
+	{	.compatible = "qcom,ak4962-spi", },
+	{}
+};
+
+static struct spi_driver ak4962_spi_driver = {
+	.driver = {
+		.name	= "ak4962-spi",
+		/*.bus	= &spi_bus_type,*/
+		.owner	= THIS_MODULE,
+		.of_match_table = ak4962_match_table,
+	},
+	.probe		= ak49xx_spi_probe,
+	.remove		= ak49xx_spi_remove,
+	.resume		= ak49xx_spi_resume,
+	.suspend	= ak49xx_spi_suspend,
+};
+#endif
 static int __init ak49xx_init(void)
 {
-	int ret1, ret2, ret3, ret4;
+	int ret1, ret2;
+	#ifdef CONFIG_AK4961_CODEC
+	int ret3, ret4;
+	#endif
+	#ifdef CONFIG_AK4962_CODEC
+	int ret5, ret6;
+	#endif
 
 	ret1 = slim_driver_register(&ak4960_slim_driver);
 	if (ret1 != 0) {
 		pr_err("Failed to register ak4960_slim_driver: %d\n", ret1);
-	} else {
-		pr_info("%s: succeed in registering ak4960_slim_driver\n", __func__);
+		return ret1;
 	}
+	pr_info("%s: succeed in registering ak4960_slim_driver\n", __func__);
 
 	ret2 = spi_register_driver(&ak4960_spi_driver);
 	if (ret2 != 0) {
 		pr_err("Failed to register ak4960_spi_driver: %d\n", ret2);
-	} else {
-		pr_info("%s: succeed in registering ak4960_spi_driver\n", __func__);
+		return ret2;
 	}
+	pr_info("%s: succeed in registering ak4960_spi_driver\n", __func__);
 
+#ifdef CONFIG_AK4961_CODEC
 	ret3 = slim_driver_register(&ak4961_slim_driver);
 	if (ret3 != 0) {
 		pr_err("Failed to register ak4961_slim_driver: %d\n", ret3);
-	} else {
-		pr_info("%s: succeed in registering ak4961_slim_driver\n", __func__);
+		return ret3;
 	}
+	pr_info("%s: succeed in registering ak4961_slim_driver\n", __func__);
 
 	ret4 = spi_register_driver(&ak4961_spi_driver);
 	if (ret4 != 0) {
 		pr_err("Failed to register ak4961_spi_driver: %d\n", ret4);
-	} else {
-		pr_info("%s: succeed in registering ak4961_spi_driver\n", __func__);
+		return ret4;
 	}
+		pr_info("%s: succeed in registering ak4961_spi_driver\n", __func__);
 
-	return (ret1 && ret2 && ret3 && ret4) ? -1 : 0;
+#endif
+#ifdef CONFIG_AK4962_CODEC
+	ret5 = slim_driver_register(&ak4962_slim_driver);
+	if (ret5 != 0) {
+		pr_err("Failed to register ak4962_slim_driver: %d\n", ret5);
+		return ret5;
+	}
+	pr_info("%s: succeed in registering ak4962_slim_driver\n", __func__);
+
+	ret6 = spi_register_driver(&ak4962_spi_driver);
+	if (ret6 != 0) {
+		pr_err("Failed to register ak4962_spi_driver: %d\n", ret6);
+		return ret6;
+	}
+	pr_info("%s: succeed in registering ak4962_spi_driver\n", __func__);
+#endif
+
+	/*return (ret1 && ret2 && ret3 && ret4 && ret5 && ret6) ? -1 : 0;*/
+	return 0;
 }
 module_init(ak49xx_init);
-//late_initcall(ak49xx_init);
+/* late_initcall(ak49xx_init); */
 
 static void __exit ak49xx_exit(void)
 {
 	spi_unregister_driver(&ak4960_spi_driver);
+	#ifdef CONFIG_AK4961_CODEC
 	spi_unregister_driver(&ak4961_spi_driver);
+	#endif
+	#ifdef CONFIG_AK4962_CODEC
+	spi_unregister_driver(&ak4962_spi_driver);
+	#endif
 	ak49xx_intf = AK49XX_INTERFACE_TYPE_PROBING;
 	ak49xx_set_intf_type(AK49XX_INTERFACE_TYPE_PROBING);
 }

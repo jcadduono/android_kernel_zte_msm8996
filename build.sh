@@ -54,7 +54,7 @@ while [ $# != 0 ]; do
 	shift
 done
 
-[ "$TARGET" ] || TARGET=zte_ailsa_ii
+[ "$TARGET" ] || TARGET=twrp_ailsa_ii
 
 DEFCONFIG=${TARGET}_defconfig
 

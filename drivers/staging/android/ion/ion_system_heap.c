@@ -31,6 +31,10 @@
 #include <trace/events/kmem.h>
 #include <soc/qcom/secure_buffer.h>
 
+#ifdef CONFIG_ION_ZTE_FRAGMENT_OPT
+#include "ion_zte_fragment_opt_priv.h"
+#endif
+
 static gfp_t high_order_gfp_flags = (GFP_HIGHUSER | __GFP_NOWARN |
 				     __GFP_NO_KSWAPD | __GFP_NORETRY)
 				     & ~__GFP_WAIT;
@@ -72,6 +76,72 @@ struct page_info {
 	struct list_head list;
 };
 
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+/*
+ * Print the current each pool info in the ion system heap.
+ * ignore the vmid pools
+ */
+int ion_system_heap_pool_print(struct ion_system_heap *sys_heap,
+	struct seq_file *s)
+{
+	bool use_seq = s != NULL;
+	struct ion_page_pool *cached_pool;
+	struct ion_page_pool *uncached_pool;
+	unsigned int total_size, total_count, cached_size, uncached_size;
+	unsigned int cached_count, uncached_count, tmp_size;
+	int i;
+
+	if (!zte_ion_sys_debug_user_max())
+		return 0; /* skip if not enabled */
+
+	total_size = 0; /* for the total size */
+	total_count = 0;
+	for (i = 0; i < num_orders; i++) { /* same as ORDER_USED_NUM */
+		cached_pool = sys_heap->cached_pools[i];
+		cached_count = cached_pool->high_count
+			+ cached_pool->low_count;
+		cached_size = cached_count * (1 << cached_pool->order)
+			* PAGE_SIZE;
+
+		uncached_pool = sys_heap->uncached_pools[i];
+		uncached_count = uncached_pool->high_count
+			+ uncached_pool->low_count;
+		uncached_size = uncached_count * (1 << uncached_pool->order)
+			* PAGE_SIZE;
+
+		tmp_size = cached_size + uncached_size;
+
+		if (use_seq) {
+			seq_printf(s, "%u (%u order) cached %u, uncached %u, 0x%x\n",
+				cached_pool->order, uncached_pool->order,
+				cached_count,
+				uncached_count,
+				tmp_size);
+		} else {
+			pr_info("%u (%u order) cached %u, uncached %u, 0x%x\n",
+				cached_pool->order, uncached_pool->order,
+				cached_count,
+				uncached_count,
+				tmp_size);
+		}
+		total_size +=  tmp_size;
+		total_count += cached_count + uncached_count;
+	}
+
+	if (use_seq) {
+		seq_printf(s, "and pool total = 0x%x Bytes, total count = %d\n",
+			total_size,
+			total_count);
+	} else {
+		pr_info("and pool total = 0x%x Bytes, total count = %d\n",
+			total_size,
+			total_count);
+	}
+
+	return 0;
+}
+#endif
+
 static struct page *alloc_buffer_page(struct ion_system_heap *heap,
 				      struct ion_buffer *buffer,
 				      unsigned long order,
@@ -82,6 +152,10 @@ static struct page *alloc_buffer_page(struct ion_system_heap *heap,
 	struct page *page;
 	struct ion_page_pool *pool;
 	int vmid = get_secure_vmid(buffer->flags);
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+	/* The order must be one of the four order in orders[] */
+	int tmp_index = order_to_index(order);
+#endif
 
 	if (*from_pool) {
 		if (vmid > 0)
@@ -95,6 +169,19 @@ static struct page *alloc_buffer_page(struct ion_system_heap *heap,
 			page = ion_page_pool_prefetch(pool, from_pool);
 		else
 			page = ion_page_pool_alloc(pool, from_pool);
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+		/* under the protecting of the ion dev lock */
+		if (page && zte_ion_sys_dedi_mem_config()) {
+			mutex_lock(&ion_sys_mutex);
+			/* max stats update */
+			zte_ion_sys_dm_cur_count_inc(tmp_index, cached);
+
+			/* control stats update */
+			zte_ion_sys_dedi_alloc_buffer_update(
+				tmp_index, cached);
+			mutex_unlock(&ion_sys_mutex);
+		}
+#endif
 	} else {
 		gfp_t gfp_mask = low_order_gfp_flags;
 		if (order)
@@ -104,6 +191,16 @@ static struct page *alloc_buffer_page(struct ion_system_heap *heap,
 	if (!page)
 		return 0;
 
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+	if (zte_ion_sys_dedi_mem_config()) {
+		/* valid allocating */
+		mutex_lock(&ion_sys_mutex);
+		zte_ion_sys_add_dm_cur_bytes(order_to_size(order));
+		if (zte_ion_sys_max_other_update()) /*check for possible */
+			ion_system_heap_pool_print(heap, NULL);
+		mutex_unlock(&ion_sys_mutex);
+	}
+#endif
 	return page;
 }
 
@@ -118,6 +215,10 @@ static void free_buffer_page(struct ion_system_heap *heap,
 	bool cached = ion_buffer_cached(buffer);
 	bool prefetch = buffer->flags & ION_FLAG_POOL_PREFETCH;
 	int vmid = get_secure_vmid(buffer->flags);
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+	/* The order must be one of the four order in orders[] */
+	int tmp_index = order_to_index(order);
+#endif
 
 	if (!(buffer->flags & ION_FLAG_POOL_FORCE_ALLOC)) {
 		struct ion_page_pool *pool;
@@ -128,13 +229,35 @@ static void free_buffer_page(struct ion_system_heap *heap,
 		else
 			pool = heap->uncached_pools[order_to_index(order)];
 
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+		/* free to the pool */
+		if (page && zte_ion_sys_dedi_mem_config()) {
+			mutex_lock(&ion_sys_mutex);
+			/* max stats update */
+			zte_ion_sys_dm_cur_count_dec(tmp_index, cached);
+			mutex_unlock(&ion_sys_mutex);
+		}
+
+		/* always free to pool, ignore the below flag */
+		ion_page_pool_free(pool, page, prefetch);
+#else
 		if (buffer->private_flags & ION_PRIV_FLAG_SHRINKER_FREE)
 			ion_page_pool_free_immediate(pool, page);
 		else
 			ion_page_pool_free(pool, page, prefetch);
+#endif
 	} else {
 		__free_pages(page, order);
 	}
+
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+	if (page && zte_ion_sys_dedi_mem_config()) {
+		mutex_lock(&ion_sys_mutex);
+		/* max stats update */
+		zte_ion_sys_sub_dm_cur_bytes(order_to_size(order));
+		mutex_unlock(&ion_sys_mutex);
+	}
+#endif
 }
 
 static struct page_info *alloc_largest_available(struct ion_system_heap *heap,
@@ -467,13 +590,30 @@ static int ion_system_heap_shrink(struct ion_heap *heap, gfp_t gfp_mask,
 	int i, j, nr_freed = 0;
 	int only_scan = 0;
 	struct ion_page_pool *pool;
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+	int page_count;
+#endif
 
 	sys_heap = container_of(heap, struct ion_system_heap, heap);
 
 	if (!nr_to_scan)
 		only_scan = 1;
 
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+	if (nr_to_scan && zte_ion_sys_debug_shrink()) /* !only_scan */
+		pr_info("zte_ion_dbg gfp=0x%x, scan=%u\n",
+			gfp_mask, nr_to_scan);
+#endif
+
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+	/*
+	 * The single page order has the priority to be released.
+	 * Notice that the big order index, the less page block here.
+	 */
+	for (i = num_orders - 1; i >= 0; i--) {
+#else
 	for (i = 0; i < num_orders; i++) {
+#endif
 		nr_freed = 0;
 
 		for (j = 0; j < VMID_LAST; j++) {
@@ -483,11 +623,49 @@ static int ion_system_heap_shrink(struct ion_heap *heap, gfp_t gfp_mask,
 		}
 
 		pool = sys_heap->uncached_pools[i];
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+		page_count = ion_page_pool_shrink(pool, gfp_mask,
+						0); /* scan first */
+		if (zte_ion_sys_dedi_mem_config())
+			page_count = /* below 0 for uncached */
+				zte_ion_sys_dedi_shrink_filter(i,
+					0, page_count);
+
+		if (0 == nr_to_scan) /* scan the count, not releasing */
+			nr_freed += page_count;
+		else {
+			/* shrinking action is protected by shrinker_rwsem,
+			  * so above pool count will not decrease this moment */
+			if (page_count > 0) {
+				nr_freed += ion_page_pool_shrink(pool, gfp_mask,
+						page_count);
+			}
+		}
+#else
 		nr_freed += ion_page_pool_shrink(pool, gfp_mask,
 						nr_to_scan);
-
+#endif
 		pool = sys_heap->cached_pools[i];
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+		/* scan first */
+		page_count = ion_page_pool_shrink(pool, gfp_mask, 0);
+		if (zte_ion_sys_dedi_mem_config())
+			page_count = /* below 1 for cached */
+				zte_ion_sys_dedi_shrink_filter(i,
+					1, page_count);
+
+		if (0 == nr_to_scan) /* scan the count, not releasing */
+			nr_freed += page_count;
+		else {
+			/* shrinking action is protected by shrinker_rwsem,
+			  * so above pool count will not decrease this moment */
+			if (page_count > 0)
+				nr_freed += ion_page_pool_shrink(pool, gfp_mask,
+					page_count);
+		}
+#else
 		nr_freed += ion_page_pool_shrink(pool, gfp_mask, nr_to_scan);
+#endif
 		nr_total += nr_freed;
 
 		if (!only_scan) {
@@ -497,6 +675,11 @@ static int ion_system_heap_shrink(struct ion_heap *heap, gfp_t gfp_mask,
 				break;
 		}
 	}
+#ifdef CONFIG_ION_ZTE_DEDICATED_PAGE_BLOCK
+	if (!only_scan && zte_ion_sys_debug_shrink())
+		pr_info("zte_ion_dbg scan=%u, total=%d\n",
+			nr_to_scan, nr_total);
+#endif
 
 	return nr_total;
 }

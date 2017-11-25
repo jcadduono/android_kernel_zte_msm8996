@@ -1,5 +1,7 @@
 ccflags-$(CONFIG_POWER_SUPPLY_DEBUG) := -DDEBUG
-
+ifneq (,$(filter P996A01_N P996A04_N, $(ZTE_PROJECT_NAME)))
+ccflags-y += -DZTE_AILSA_II_VR
+endif
 power_supply-y				:= power_supply_core.o
 power_supply-$(CONFIG_SYSFS)		+= power_supply_sysfs.o
 power_supply-$(CONFIG_LEDS_TRIGGERS)	+= power_supply_leds.o
@@ -73,6 +75,8 @@ obj-$(CONFIG_QPNP_VM_BMS)	+= qpnp-vm-bms.o batterydata-lib.o batterydata-interfa
 obj-$(CONFIG_QPNP_FG)		+= qpnp-fg.o
 obj-$(CONFIG_QPNP_CHARGER)	+= qpnp-charger.o
 obj-$(CONFIG_QPNP_LINEAR_CHARGER)	+= qpnp-linear-charger.o
+obj-y += zte_misc.o
+obj-$(CONFIG_ZTE_HALL_AVAILABLE) += zte-hall.o
 obj-$(CONFIG_QPNP_SMBCHARGER)	+= qpnp-smbcharger.o pmic-voter.o
 obj-$(CONFIG_QPNP_TYPEC)	+= qpnp-typec.o
 obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o

@@ -9,6 +9,7 @@
 #define S_IALLUGO	(S_ISUID|S_ISGID|S_ISVTX|S_IRWXUGO)
 #define S_IRUGO		(S_IRUSR|S_IRGRP|S_IROTH)
 #define S_IWUGO		(S_IWUSR|S_IWGRP|S_IWOTH)
+#define S_IWUGO_2	(S_IWUSR)
 #define S_IXUGO		(S_IXUSR|S_IXGRP|S_IXOTH)
 
 #define UTIME_NOW	((1l << 30) - 1l)

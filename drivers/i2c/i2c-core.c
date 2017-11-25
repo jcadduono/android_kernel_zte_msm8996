@@ -1944,6 +1944,48 @@ void i2c_clients_command(struct i2c_adapter *adap, unsigned int cmd, void *arg)
 }
 EXPORT_SYMBOL(i2c_clients_command);
 
+struct workqueue_struct *i2c_wq = NULL;
+LIST_HEAD(async_driver);
+
+struct i2c_driver_register_work {
+	struct work_struct queue_work;
+	struct module *owner;
+	struct i2c_driver *driver;
+	struct list_head link;
+};
+
+static void process_i2c_driver_register(struct work_struct *work)
+{
+
+	struct i2c_driver_register_work *p = container_of(work, struct i2c_driver_register_work, queue_work);
+	printk(KERN_ERR"%s:%d %s", __FUNCTION__, __LINE__, p->driver->driver.name);
+	i2c_register_driver(p->owner, p->driver);
+	return ;
+}
+
+
+int i2c_register_driver_async(struct module *owner, struct i2c_driver *driver)
+{
+	struct i2c_driver_register_work *p = NULL;
+
+	if (NULL == i2c_wq) {
+		return i2c_register_driver(owner, driver);
+	}
+	p = kzalloc(sizeof (struct i2c_driver_register_work), GFP_KERNEL);
+	if (NULL == p) {
+		return i2c_register_driver(owner, driver);
+	}
+	p->owner = owner;
+	p->driver = driver;
+	INIT_WORK(&(p->queue_work), process_i2c_driver_register);
+	INIT_LIST_HEAD(&(p->link));
+	list_add_tail(&(p->link), &async_driver);
+	queue_work(i2c_wq, &(p->queue_work));
+	return 0;
+}
+EXPORT_SYMBOL(i2c_register_driver_async);
+
+
 static int __init i2c_init(void)
 {
 	int retval;
@@ -1961,6 +2003,11 @@ static int __init i2c_init(void)
 	retval = i2c_add_driver(&dummy_driver);
 	if (retval)
 		goto class_err;
+
+        i2c_wq = create_workqueue("i2c-init-wq");
+	if (NULL == i2c_wq) {
+		pr_debug("i2c-core: create_workqueue i2c-init-wq fail");
+	}
 	return 0;
 
 class_err:
@@ -1980,6 +2027,17 @@ static void __exit i2c_exit(void)
 #endif
 	bus_unregister(&i2c_bus_type);
 	tracepoint_synchronize_unregister();
+	if (i2c_wq) {
+		destroy_workqueue(i2c_wq);
+		i2c_wq = NULL;
+	}
+	while (!list_empty(&async_driver)) {
+		struct i2c_driver_register_work *p =
+			list_entry(async_driver.next, struct i2c_driver_register_work, link);
+		list_del(async_driver.next);
+		kfree(p);
+		p = NULL;
+	}
 }
 
 /* We must initialize early, because some subsystems register i2c drivers

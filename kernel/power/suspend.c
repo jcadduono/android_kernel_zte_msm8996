@@ -30,6 +30,10 @@
 #include <trace/events/power.h>
 #include <linux/compiler.h>
 #include <linux/wakeup_reason.h>
+#ifdef CONFIG_BOARD_AILSA_II
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+#endif
 
 #include "power.h"
 
@@ -40,6 +44,9 @@ static const struct platform_suspend_ops *suspend_ops;
 static const struct platform_freeze_ops *freeze_ops;
 static DECLARE_WAIT_QUEUE_HEAD(suspend_freeze_wait_head);
 static bool suspend_freeze_wake;
+#ifdef CONFIG_BOARD_AILSA_II
+extern int sleepstate_gpio;
+#endif
 
 void freeze_set_ops(const struct platform_freeze_ops *ops)
 {
@@ -371,6 +378,15 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 	return error;
 }
 
+/*ZTE ++++ */
+#ifndef RECORD_APP_AWAKE_SUSPEND_TIME_ZTE
+#define RECORD_APP_AWAKE_SUSPEND_TIME_ZTE
+#endif
+#ifdef RECORD_APP_AWAKE_SUSPEND_TIME_ZTE
+extern void record_sleep_awake_time(bool record_sleep_awake);
+#endif
+/*ZTE ---- */
+
 /**
  * suspend_devices_and_enter - Suspend devices and enter system sleep state.
  * @state: System sleep state to enter.
@@ -406,6 +422,14 @@ int suspend_devices_and_enter(suspend_state_t state)
  Resume_devices:
 	suspend_test_start();
 	dpm_resume_end(PMSG_RESUME);
+
+/*ZTE ++++ */
+#ifdef RECORD_APP_AWAKE_SUSPEND_TIME_ZTE
+	pr_info("Resume DONE\n");
+	record_sleep_awake_time(false);
+#endif
+/*ZTE ---- */
+
 	suspend_test_finish("resume devices");
 	trace_suspend_resume(TPS("resume_console"), state, true);
 	resume_console();
@@ -518,7 +542,23 @@ int pm_suspend(suspend_state_t state)
 		return -EINVAL;
 
 	pm_suspend_marker("entry");
+
+#ifdef CONFIG_BOARD_AILSA_II
+	if (-1 != sleepstate_gpio) {
+		gpio_set_value(sleepstate_gpio, 0);
+		pr_info("%s: PM_SUSPEND_PREPARE %d\n", __func__, sleepstate_gpio);
+	}
+#endif
+
 	error = enter_state(state);
+
+#ifdef CONFIG_BOARD_AILSA_II
+	if (-1 != sleepstate_gpio) {
+		gpio_set_value(sleepstate_gpio, 1);
+		pr_info("%s: PM_POST_SUSPEND %d\n", __func__, sleepstate_gpio);
+	}
+#endif
+
 	if (error) {
 		suspend_stats.fail++;
 		dpm_save_failed_errno(error);

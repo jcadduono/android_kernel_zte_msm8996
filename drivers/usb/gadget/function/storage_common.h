@@ -88,6 +88,10 @@ do {									\
 #define ASC(x)		((u8) ((x) >> 8))
 #define ASCQ(x)		((u8) (x))
 
+/* OEM for SCSI Command sent by OS X */
+#define SC_GET_CONFIGRATION      0x46
+#define SC_SET_CD_SPEED          0xbb
+
 struct fsg_lun {
 	struct file	*filp;
 	loff_t		file_length;

@@ -1462,6 +1462,8 @@ process:
 
 	if (sk_filter(sk, skb))
 		goto discard_and_relse;
+	th = (const struct tcphdr *)skb->data;
+	hdr = ipv6_hdr(skb);
 
 	sk_mark_napi_id(sk, skb);
 	skb->dev = NULL;
@@ -1471,6 +1473,18 @@ process:
 	if (!sock_owned_by_user(sk)) {
 		if (!tcp_prequeue(sk, skb))
 			ret = tcp_v6_do_rcv(sk, skb);
+		if ((tcp_socket_debugfs & 0x00000001)) { /*ZTE_LC_TCP_DEBUG, 20170418 improved*/
+			kuid_t uid = sock_i_uid(sk);
+
+			pr_info("[IP] TCP RCV len = %hu uid=%d, "
+				"Gpid:%d (%s) [%d (%s)] (%pI6:%hu <- %pI6:%hu)\n",
+				ntohs(hdr->payload_len),
+				uid.val,
+				current->group_leader->pid, current->group_leader->comm,
+				current->pid, current->comm,
+				&hdr->daddr, ntohs(th->dest),
+				&hdr->saddr, ntohs(th->source));
+		}
 	} else if (unlikely(sk_add_backlog(sk, skb,
 					   sk->sk_rcvbuf + sk->sk_sndbuf))) {
 		bh_unlock_sock(sk);

@@ -508,10 +508,15 @@ extern int i2c_add_numbered_adapter(struct i2c_adapter *);
 
 extern int i2c_register_driver(struct module *, struct i2c_driver *);
 extern void i2c_del_driver(struct i2c_driver *);
+extern int i2c_register_driver_async(struct module *owner, struct i2c_driver *driver);
 
 /* use a define to avoid include chaining to get THIS_MODULE */
 #define i2c_add_driver(driver) \
 	i2c_register_driver(THIS_MODULE, driver)
+
+#define i2c_add_driver_async(driver) \
+	i2c_register_driver_async(THIS_MODULE, driver)
+
 
 extern struct i2c_client *i2c_use_client(struct i2c_client *client);
 extern void i2c_release_client(struct i2c_client *client);

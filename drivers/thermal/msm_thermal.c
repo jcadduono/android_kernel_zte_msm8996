@@ -1913,6 +1913,112 @@ done_vdd_rstr_en:
 	return count;
 }
 
+#define WMARD_DELAY    (10*HZ)
+static void
+low_wmark_func(struct work_struct *dummy);
+
+static struct kobject *lw_kobj;
+
+static DECLARE_DELAYED_WORK(low_wmark_work, low_wmark_func);
+uint32_t low_wmark_max_freq = 0;
+unsigned long low_wmark_max_freq_jiffies;
+
+static void reset_low_wmark_max_freq(void)
+{
+	unsigned long timeout;
+
+	timeout = low_wmark_max_freq_jiffies + WMARD_DELAY;
+	if (time_after(jiffies, timeout)) {
+		low_wmark_max_freq = 0;
+	}
+}
+
+static void
+low_wmark_func(struct work_struct *dummy)
+{
+	reset_low_wmark_max_freq();
+	if (freq_mitigation_task) {
+		complete(&freq_mitigation_complete);
+	}
+	if (low_wmark_max_freq) {
+		schedule_delayed_work(&low_wmark_work, WMARD_DELAY);
+	}
+}
+
+uint32_t get_low_wmark_max_freq(void)
+{
+	reset_low_wmark_max_freq();
+	return low_wmark_max_freq;
+}
+
+static ssize_t
+app_max_freq_limit_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", low_wmark_max_freq);
+}
+
+static ssize_t
+app_max_freq_limit_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	uint32_t max = UINT_MAX;
+
+	if (sscanf(buf, "%u\n", &max) != 1)
+		return -EINVAL;
+	low_wmark_max_freq = max;
+	low_wmark_max_freq_jiffies = jiffies;
+	if (freq_mitigation_task) {
+		complete(&freq_mitigation_complete);
+	}
+	schedule_delayed_work(&low_wmark_work, WMARD_DELAY);
+	return count;
+}
+static DEVICE_ATTR(app_max_freq_limit, 0644, app_max_freq_limit_show, app_max_freq_limit_store);
+
+static struct attribute *lw_attribs[] = {
+	&dev_attr_app_max_freq_limit.attr,
+	NULL,
+};
+
+static struct attribute_group lw_attribs_gp = {
+	.attrs  = lw_attribs,
+};
+
+static __init int msm_thermal_add_wmark(void)
+{
+	struct kobject *module_kobj = NULL;
+	int ret = 0;
+
+	module_kobj = kset_find_obj(module_kset, KBUILD_MODNAME);
+	if (!module_kobj) {
+		pr_err("%s: cannot find kobject for module\n",
+		       KBUILD_MODNAME);
+		ret = -ENOENT;
+		goto failed;
+	}
+
+	lw_kobj = kobject_create_and_add("freq_wmark", module_kobj);
+	if (!lw_kobj) {
+		pr_err("%s: cannot create lw kobj\n",
+		       KBUILD_MODNAME);
+		ret = -ENOMEM;
+		goto failed;
+	}
+
+	ret = sysfs_create_group(lw_kobj, &lw_attribs_gp);
+	if (ret) {
+		pr_err("%s: cannot create group\n", KBUILD_MODNAME);
+		goto failed;
+	}
+
+	return 0;
+
+failed:
+	if (lw_kobj)
+		kobject_del(lw_kobj);
+	return ret;
+}
+
 static int send_temperature_band(enum msm_thermal_phase_ctrl phase,
 	enum msm_temp_band req_band)
 {
@@ -3624,6 +3730,9 @@ static __ref int do_freq_mitigation(void *data)
 					UINT_MAX;
 			max_freq_req = min(max_freq_req,
 					cpus[cpu].user_max_freq);
+
+			max_freq_req = max(max_freq_req,
+					   get_low_wmark_max_freq());
 
 			max_freq_req = min(max_freq_req,
 					cpus[cpu].shutdown_max_freq);
@@ -7260,6 +7369,7 @@ int __init msm_thermal_late_init(void)
 	create_thermal_debugfs();
 	msm_thermal_add_bucket_info_nodes();
 	uio_init(msm_thermal_info.pdev);
+	msm_thermal_add_wmark();
 
 	return 0;
 }

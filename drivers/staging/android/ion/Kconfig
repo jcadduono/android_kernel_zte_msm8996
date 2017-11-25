@@ -54,3 +54,17 @@ config ION_POOL_CACHE_POLICY
 	help
 	  Choose this option if need to explicity set cache policy of the
 	  pages in the page pool.
+
+config ION_ZTE_FRAGMENT_OPT
+	bool "ZTE FRAGMENT DEBUG Indicating the fragment status of ION SYSTEM HEAP"
+	depends on ION
+	help
+	   Choose this option if you want to check the ION fragment status.
+	   The less is the BPE best/used ratio, the better is the fragment status.
+
+config ION_ZTE_DEDICATED_PAGE_BLOCK
+	bool "ZTE Set a limit to keep some memory which is only used by ION SYSTEM HEAP"
+	depends on ION && ION_ZTE_FRAGMENT_OPT
+	help
+	   ION_FLAG is extended to tag if a page block memory is only used by ION SYSTEM HEAP.
+	   If the flag is set, it will not be released when shrinking.

@@ -29,7 +29,7 @@
 #include <linux/icmpv6.h>
 #include <linux/mroute6.h>
 #include <linux/slab.h>
-
+#include <linux/skbuff.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv6.h>
 
@@ -45,6 +45,8 @@
 #include <net/addrconf.h>
 #include <net/xfrm.h>
 #include <net/inet_ecn.h>
+
+extern int tcp_socket_debugfs; /*ZTE_LC_IP_DEBUG, 20170418 improved*/
 
 
 int ip6_rcv_finish(struct sk_buff *skb)
@@ -196,6 +198,126 @@ drop:
 /*
  *	Deliver the packet to the host
  */
+static int
+extract_icmp6_fields_lo(const struct sk_buff *skb,
+		     unsigned int outside_hdrlen,
+		     int *protocol,
+		     struct in6_addr **raddr,
+		     struct in6_addr **laddr,
+		     __be16 *rport,
+		     __be16 *lport)
+{
+	struct ipv6hdr *inside_iph, _inside_iph;
+	struct icmp6hdr *icmph, _icmph;
+	__be16 *ports, _ports[2];
+	u8 inside_nexthdr;
+	__be16 inside_fragoff;
+	int inside_hdrlen;
+
+	icmph = skb_header_pointer(skb, outside_hdrlen,
+				   sizeof(_icmph), &_icmph);
+	if (!icmph)
+		return 1;
+
+	if (icmph->icmp6_type & ICMPV6_INFOMSG_MASK)
+		return 1;
+
+	inside_iph = skb_header_pointer(skb, outside_hdrlen + sizeof(_icmph), sizeof(_inside_iph), &_inside_iph);
+	if (!inside_iph)
+		return 1;
+	inside_nexthdr = inside_iph->nexthdr;
+
+	inside_hdrlen = ipv6_skip_exthdr(skb, outside_hdrlen + sizeof(_icmph) + sizeof(_inside_iph),
+					 &inside_nexthdr, &inside_fragoff);
+	if (inside_hdrlen < 0)
+		return 1; /* hjm: Packet has no/incomplete transport layer headers. */
+
+	if (inside_nexthdr != IPPROTO_TCP &&
+		inside_nexthdr != IPPROTO_UDP)
+		return 1;
+
+	ports = skb_header_pointer(skb, inside_hdrlen,
+				   sizeof(_ports), &_ports);
+	if (!ports)
+		return 1;
+
+	/* the inside IP packet is the one quoted from our side, thus
+	 * its saddr is the local address */
+	*protocol = inside_nexthdr;
+	*laddr = &inside_iph->saddr;
+	*lport = ports[0];
+	*raddr = &inside_iph->daddr;
+	*rport = ports[1];
+
+	return 0;
+}
+
+void
+xt_socket_get6_print(struct sk_buff *skb, int direction)
+{
+	struct ipv6hdr *iph = ipv6_hdr(skb);
+	struct udphdr _hdr, *hp = NULL;
+	struct sock *sk = skb->sk;
+	struct in6_addr *daddr = NULL, *saddr = NULL;
+
+	__be16 uninitialized_var(dport), uninitialized_var(sport);
+	int thoff = 0, uninitialized_var(tproto);
+	kuid_t uid = GLOBAL_ROOT_UID;
+	char string[50], dirstr[10];
+	int ulen = 0;
+
+	if (!(tcp_socket_debugfs & 0x00000002))
+		return;
+
+	tproto = ipv6_find_hdr(skb, &thoff, -1, NULL, NULL);
+	if (tproto < 0) {
+		pr_debug("unable to find transport header in IPv6 packet, dropping\n");
+		return;
+	}
+
+	if (tproto == IPPROTO_UDP || tproto == IPPROTO_TCP) {
+		hp = skb_header_pointer(skb, thoff,
+					sizeof(_hdr), &_hdr);
+		if (!hp)
+			return;
+
+		saddr = &iph->saddr;
+		sport = hp->source;
+		daddr = &iph->daddr;
+		dport = hp->dest;
+		if (tproto == IPPROTO_UDP) {
+			strlcpy(string, " UDP", sizeof(string));
+			ulen = skb->len;
+		} else {
+			strlcpy(string, " TCP", sizeof(string));
+			ulen = htons(skb->len - sizeof(*iph));
+		}
+	} else if (tproto == IPPROTO_ICMPV6) {
+		if (extract_icmp6_fields_lo(skb, thoff, &tproto,
+					&saddr, &daddr, &sport, &dport))
+			return;
+		strlcpy(dirstr, " ICMPV6", sizeof(dirstr));
+	} else
+		return;
+
+	if (sk) {
+		atomic_inc(&sk->sk_refcnt);
+		uid = sock_i_uid(sk);
+	}
+
+	if (direction == 1)  /*0 tx, 1, rx*/
+		strlcpy(dirstr, " RCV len =", sizeof(dirstr));
+	else
+		strlcpy(dirstr, " SEND len =", sizeof(dirstr));
+
+	strlcat(string, dirstr, sizeof(string));
+
+	pr_info("[IP]%s %d uid = %d Gpid:%d (%s) %pI6:%hu -> %pI6:%hu\n",
+		string, ulen, uid.val, current->group_leader->pid, current->group_leader->comm,
+		saddr, ntohs(sport),
+		daddr, ntohs(dport));
+}
+EXPORT_SYMBOL(xt_socket_get6_print);
 
 
 static int ip6_input_finish(struct sk_buff *skb)

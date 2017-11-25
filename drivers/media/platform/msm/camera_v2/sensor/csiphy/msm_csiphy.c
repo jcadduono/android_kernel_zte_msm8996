@@ -781,7 +781,24 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 	}
 
 	CDBG("%s:%d called\n", __func__, __LINE__);
-
+	rc = msm_camera_config_vreg(&csiphy_dev->pdev->dev,
+		csiphy_dev->csiphy_vreg,
+		csiphy_dev->regulator_count, NULL, 0,
+		&csiphy_dev->csiphy_reg_ptr[0], 1);
+	if (rc < 0) {
+		pr_err("%s:%d csiphy config_vreg failed\n",
+			__func__, __LINE__);
+		goto csiphy_vreg_config_fail;
+	}
+	rc = msm_camera_enable_vreg(&csiphy_dev->pdev->dev,
+		csiphy_dev->csiphy_vreg,
+		csiphy_dev->regulator_count, NULL, 0,
+		&csiphy_dev->csiphy_reg_ptr[0], 1);
+	if (rc < 0) {
+		pr_err("%s:%d csiphy enable_vreg failed\n",
+			__func__, __LINE__);
+		goto top_vreg_enable_failed;
+	}
 	rc = msm_camera_clk_enable(&csiphy_dev->pdev->dev,
 		csiphy_dev->csiphy_clk_info, csiphy_dev->csiphy_clk,
 		csiphy_dev->num_clk, true);
@@ -790,9 +807,9 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 	if (rc < 0) {
 		pr_err("%s: csiphy clk enable failed\n", __func__);
 		csiphy_dev->ref_count--;
-		goto csiphy_resource_fail;
+		goto csiphy_enable_clk_fail;
 	}
-	CDBG("%s:%d called\n", __func__, __LINE__);
+	CDBG("%s:%d clk enable success\n", __func__, __LINE__);
 
 	rc = msm_camera_enable_irq(csiphy_dev->irq, true);
 	if (rc < 0)
@@ -818,11 +835,13 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 	csiphy_dev->csiphy_state = CSIPHY_POWER_UP;
 	return 0;
 
-csiphy_resource_fail:
-	if (cam_config_ahb_clk(NULL, 0, CAM_AHB_CLIENT_CSIPHY,
-		CAM_AHB_SUSPEND_VOTE) < 0)
-		pr_err("%s: failed to vote for AHB\n", __func__);
+csiphy_enable_clk_fail:
+	msm_camera_enable_vreg(&csiphy_dev->pdev->dev,
+		csiphy_dev->csiphy_vreg,
+		csiphy_dev->regulator_count, NULL, 0,
+		&csiphy_dev->csiphy_reg_ptr[0], 0);
 	return rc;
+
 }
 #else
 static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
@@ -865,9 +884,9 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 	if (rc < 0) {
 		pr_err("%s: csiphy clk enable failed\n", __func__);
 		csiphy_dev->ref_count--;
-		goto csiphy_resource_fail;
+		goto csiphy_enable_clk_fail;
 	}
-	CDBG("%s:%d called\n", __func__, __LINE__);
+	CDBG("%s:%d clk enable success\n", __func__, __LINE__);
 
 	if (csiphy_dev->csiphy_3phase == CSI_3PHASE_HW)
 		msm_csiphy_3ph_reset(csiphy_dev);
@@ -890,10 +909,11 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 	csiphy_dev->csiphy_state = CSIPHY_POWER_UP;
 	return 0;
 
-csiphy_resource_fail:
-	if (cam_config_ahb_clk(NULL, 0, CAM_AHB_CLIENT_CSIPHY,
-		CAM_AHB_SUSPEND_VOTE) < 0)
-		pr_err("%s: failed to vote for AHB\n", __func__);
+csiphy_enable_clk_fail:
+	msm_camera_enable_vreg(&csiphy_dev->pdev->dev,
+		csiphy_dev->csiphy_vreg,
+		csiphy_dev->regulator_count, NULL, 0,
+		&csiphy_dev->csiphy_reg_ptr[0], 0);
 	return rc;
 }
 #endif
@@ -997,6 +1017,13 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 			csiphy_dev->csiphy_3p_clk_info,
 			csiphy_dev->csiphy_3p_clk, 2, false);
 	}
+	msm_camera_enable_vreg(&csiphy_dev->pdev->dev,
+		csiphy_dev->csiphy_vreg,
+		csiphy_dev->regulator_count, NULL, 0,
+		&csiphy_dev->csiphy_reg_ptr[0], 0);
+	msm_camera_config_vreg(&csiphy_dev->pdev->dev,
+		csiphy_dev->csiphy_vreg, csiphy_dev->regulator_count,
+		NULL, 0, &csiphy_dev->csiphy_reg_ptr[0], 0);
 
 	csiphy_dev->csiphy_state = CSIPHY_POWER_DOWN;
 
@@ -1103,6 +1130,12 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 			csiphy_dev->csiphy_3p_clk_info,
 			csiphy_dev->csiphy_3p_clk, 2, false);
 	}
+	msm_camera_enable_vreg(&csiphy_dev->pdev->dev,
+		csiphy_dev->csiphy_vreg, csiphy_dev->regulator_count,
+		NULL, 0, &csiphy_dev->csiphy_reg_ptr[0], 0);
+	msm_camera_config_vreg(&csiphy_dev->pdev->dev,
+		csiphy_dev->csiphy_vreg, csiphy_dev->regulator_count,
+		NULL, 0, &csiphy_dev->csiphy_reg_ptr[0], 0);
 
 	csiphy_dev->csiphy_state = CSIPHY_POWER_DOWN;
 
@@ -1418,7 +1451,14 @@ static int csiphy_probe(struct platform_device *pdev)
 		rc =  -EINVAL;
 		goto csiphy_no_resource;
 	}
-
+	rc = msm_camera_get_dt_vreg_data(pdev->dev.of_node,
+		&(new_csiphy_dev->csiphy_vreg),
+		&(new_csiphy_dev->regulator_count));
+	if (rc < 0) {
+		pr_err("%s: get vreg data from dtsi fail\n", __func__);
+		rc = -EFAULT;
+		goto csiphy_no_resource;
+		}
 	/* ToDo: Enable 3phase clock for dynamic clock enable/disable */
 	rc = msm_csiphy_get_clk_info(new_csiphy_dev, pdev);
 	if (rc < 0) {
@@ -1493,7 +1533,7 @@ static int msm_csiphy_exit(struct platform_device *pdev)
 		&csiphy_dev->csiphy_all_clk,
 		csiphy_dev->num_all_clk);
 
-	msm_camera_put_reg_base(pdev, csiphy_dev->base, "csid", true);
+	msm_camera_put_reg_base(pdev, csiphy_dev->base, "csiphy", true);
 	if (csiphy_dev->hw_dts_version >= CSIPHY_VERSION_V30) {
 		msm_camera_put_reg_base(pdev, csiphy_dev->clk_mux_base,
 			"csiphy_clk_mux", true);

@@ -470,6 +470,7 @@ int input_set_keycode(struct input_dev *dev,
 		      const struct input_keymap_entry *ke);
 
 extern struct class input_class;
+extern void cancel_boosting(void);
 
 /**
  * struct ff_device - force-feedback part of an input device

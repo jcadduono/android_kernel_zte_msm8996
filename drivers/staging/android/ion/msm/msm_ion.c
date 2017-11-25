@@ -38,6 +38,10 @@
 #include "compat_msm_ion.h"
 #include <soc/qcom/secure_buffer.h>
 
+#ifdef CONFIG_ION_ZTE_FRAGMENT_OPT
+#include "../ion_zte_fragment_opt_priv.h"
+#endif
+
 #define ION_COMPAT_STR	"qcom,msm-ion"
 
 static struct ion_device *idev;
@@ -1013,6 +1017,11 @@ static int msm_ion_probe(struct platform_device *pdev)
 		err = PTR_ERR(new_dev);
 		goto freeheaps;
 	}
+
+#ifdef CONFIG_ION_ZTE_FRAGMENT_OPT
+	/* zte added some feature for ion module */
+	zte_ion_startup_init();
+#endif
 
 	/* create the heaps as specified in the board file */
 	for (i = 0; i < num_heaps; i++) {

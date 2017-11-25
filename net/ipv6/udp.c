@@ -834,6 +834,7 @@ int __udp6_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 	struct udphdr *uh;
 	const struct in6_addr *saddr, *daddr;
 	u32 ulen = 0;
+	kuid_t uid = GLOBAL_ROOT_UID;
 
 	if (!pskb_may_pull(skb, sizeof(struct udphdr)))
 		goto discard;
@@ -904,6 +905,17 @@ int __udp6_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 		if (ret > 0)
 			return -ret;
 
+		if ((tcp_socket_debugfs & 0x00000001)) {    /*ZTE_LC_TCP_DEBUG, 20170418 improved*/
+			uid = sock_i_uid(sk);
+			pr_info("[IP] UDP RCV len = %hu uid=%d, "
+				"Gpid:%d (%s) [%d (%s)] (%pI6:%hu <- %pI6:%hu)\n",
+				ulen,
+				uid.val,
+				current->group_leader->pid, current->group_leader->comm,
+				current->pid, current->comm,
+				&ip_hdr(skb)->daddr, ntohs(uh->dest),
+				&ip_hdr(skb)->saddr, ntohs(uh->source));
+		}
 		return 0;
 	}
 

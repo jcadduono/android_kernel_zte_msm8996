@@ -1108,7 +1108,7 @@ __limIbssSearchAndDeletePeer(tpAniSirGlobal pMac,
 					limDelSta(pMac, pStaDs,
 						false /*asynchronous*/,
 						psessionEntry);
-					limDeleteDphHashEntry(pMac,
+				limDeleteDphHashEntry(pMac,
 							pStaDs->staAddr,
 							peerIdx, psessionEntry);
 				limReleasePeerIdx(pMac, peerIdx, psessionEntry);
